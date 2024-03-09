@@ -11,8 +11,9 @@
 
 # meson setup and run
 
-1.  Setup build `meson setup build`
-2.  Compile build `meson compile -C build`
-3.  Run tests `meson test -C build --verbose`
-4.  Run executable `./build/bulk`
+1.  Clone repo `git clone https://github.com/Kerosin3/meson-cpp.git --branch HW7 --single-branch`
+2.  Setup build `meson setup build`
+3.  Compile build `meson compile -C build`
+4.  Run tests `meson test -C build --verbose`
+5.  Run executable `./build/bulk`
 
