@@ -1,6 +1,5 @@
 Checks: >
   bugprone-*,
-  cppcoreguidelines-*,
   cert-*,
   linuxkernel-*,
   clang-analyzer*,
