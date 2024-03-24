@@ -1,3 +1,4 @@
 sources += files(
-  'main.cpp'
+  'main.cpp',
+  'test1.cpp'
 )

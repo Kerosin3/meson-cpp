@@ -1,4 +1,0 @@
-packagecache  
-googletest-*
-!lib*
-!*.wrap

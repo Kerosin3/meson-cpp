@@ -1,4 +1,4 @@
-project('bulk', 'cpp', 
+project('test_prj', 'cpp', 
   meson_version: '>=0.58.0',
   default_options: [
     'cpp_std=c++20',
@@ -38,7 +38,7 @@ run_target('cppcheck',
                          '--std=c++20',
 		   ], )
 ######################################################
-# set root
+## set root
 sourceRoot = meson.project_source_root()
 # add include dir
 incdir = include_directories('main/include')
@@ -46,20 +46,14 @@ incdir = include_directories('main/include')
 sources = []
 # add sources from src dir
 subdir('main/src')
-# add tests
-subdir('tests')
-####################DEPENDENCIES#############################
-# add procesor library
-libprocessor_proj = subproject('libprocessor')
-libprocessor_dep = libprocessor_proj.get_variable('libprocessor_dep')
 # add boost
-boost_dep = dependency('boost')
+#boost_dep = dependency('boost')
 #############################################################
 executable(
   meson.project_name(), 
   sources,
   include_directories : incdir,
-  dependencies : [libprocessor_dep,boost_dep],
+  # dependencies : [boost_dep],
   native: true)
 
 
