@@ -26,6 +26,18 @@ add_project_arguments(cppc.get_supported_arguments([
   '-ffast-math',
 ]), language: 'cpp')
 ######################################################
+#add cpp-check
+compile_commands_json = join_paths(meson.build_root(), 'compile_commands.json')
+run_target('cppcheck',
+		   command: [
+			 'cppcheck',
+			 '--project=' + compile_commands_json,
+			 '--suppress-xml=' + join_paths(meson.source_root(), 'cppcheck-suppressions.xml'),
+			 '--error-exitcode=2',
+                         '--enable=warning,style,performance,portability,unusedFunction',
+                         '--std=c++20',
+		   ], )
+######################################################
 # set root
 sourceRoot = meson.project_source_root()
 # add include dir

@@ -30,7 +30,7 @@ print_to_stdout(const std::vector<Commands>& cmds)
   std::ostream* OUT_STREAM = Processor::s_GetOutputStream();
   *OUT_STREAM << "bulk: ";
   for (unsigned index = 0; const auto& obj : cmds) {
-    if (!index){
+    if (!index) {
       *OUT_STREAM << std::format("{}", obj.getCmd());
     } else {
       *OUT_STREAM << std::format(", {}", obj.getCmd());

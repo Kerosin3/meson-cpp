@@ -33,7 +33,6 @@ main(int argc, char* argv[])
     MyProc.parseInput();
     return EXIT_SUCCESS;
   } else {
-
     constexpr size_t BLOCKSIZE = 3;
     std::string TestInput =
         "cmd1\ncmd2\n"
@@ -46,7 +45,7 @@ main(int argc, char* argv[])
               << "output data:\n";
 
     std::stringstream InputStream {TestInput};
-    Processor MyProc  {BLOCKSIZE, InputStream};
+    Processor MyProc {BLOCKSIZE, InputStream};
     std::ostream& StreamCout = std::cout;
     Processor::s_SetOutputStream(&StreamCout);
     MyProc.addCallback(&print_to_stdout);

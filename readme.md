@@ -16,3 +16,8 @@
 3.  Run tests `meson test -C build --verbose`
 4.  Run executable `./build/bulk`
 
+# good coding
+
+1. ninja -C build cppcheck
+2. ninja -C build clang-tidy
+2. ninja -C build clang-format
