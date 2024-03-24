@@ -39,7 +39,6 @@ add_project_arguments(cxx.get_supported_arguments([
   '-fsanitize={address,thread,undefined}'
 
 ]), language: 'c')
-
 ######################################################
 #add cpp-check
 compile_commands_json = join_paths(meson.build_root(), 'compile_commands.json')

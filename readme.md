@@ -4,7 +4,10 @@
 ## REQUIREMENTS
 
 1. meson > 0.58
-4. ninja
+2. ninja
+3. cppcheck
+4. clang-tidy
+5. clang-format
 
 # meson setup and run
 
