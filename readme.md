@@ -10,11 +10,11 @@
 
 # meson setup and run
 
-1.  Setup build `meson setup build --buildtype=release`
-2.  Compile build `meson compile -C build`
+1.  Setup build `meson setup builddir --buildtype=release`
+2.  Compile build `meson compile -C builddir`
 
 # good coding
 
-1. ninja -C build cppcheck
-2. ninja -C build clang-tidy
-2. ninja -C build clang-format
+1. ninja -C builddir cppcheck
+2. ninja -C builddir clang-tidy
+2. ninja -C builddir clang-format
