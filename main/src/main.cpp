@@ -11,6 +11,6 @@ int
 main(int argc, char* argv[])
 {
   someFnction();
-  std::cout << "hello one" << std::endl;
+  std::cout << "hello X one" << std::endl;
   return EXIT_SUCCESS;
 }
