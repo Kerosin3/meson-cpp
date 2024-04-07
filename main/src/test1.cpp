@@ -3,5 +3,5 @@
 void
 someFnction()
 {
-  std::cout << "hello wordl!" << std::endl;
+  std::cout << "hello wXordl!" << std::endl;
 }
