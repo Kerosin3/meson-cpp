@@ -5,8 +5,8 @@
 #include <sstream>
 #include <thread>
 
-#include "test1.hpp"
 #include "libexample/example.hpp"
+#include "test1.hpp"
 
 int
 main(int argc, char* argv[])
