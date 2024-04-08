@@ -1,4 +1,4 @@
-project('test_prj', 'cpp', 
+project('libexample', 'cpp', 
   meson_version: '>=0.58.0',
   default_options: [
     'cpp_std=c++20',
@@ -28,24 +28,33 @@ add_project_arguments(cppc.get_supported_arguments([
 ]), language: 'cpp')
 ######################################################
 #add cpp-check
-compile_commands_json = join_paths(meson.build_root(), 'compile_commands.json')
+compile_commands_json = join_paths(meson.project_build_root(), 'compile_commands.json')
 run_target('cppcheck',
 		   command: [
 			 'cppcheck',
 			 '--project=' + compile_commands_json,
-			 '--suppress-xml=' + join_paths(meson.source_root(), 'cppcheck-suppressions.xml'),
+			 '--suppress-xml=' + join_paths(meson.project_source_root(), 'cppcheck-suppressions.xml'),
 			 '--error-exitcode=2',
                          '--enable=warning,style,performance,portability,unusedFunction',
                          '--std=c++20',
 		   ], )
 ######################################################
-## set root
-sourceRoot = meson.project_source_root()
-# add tests
-subdir('tests')
+# add include dir
+libexample_inc = include_directories('headers')
+libexample_inc_local = include_directories('headers/libexample')
+# create sources env var
+sources = []
+# add sources from src dir
+subdir('src')
+# add boost
+boost_dep = dependency('boost')
 #############################################################
-#add executable
-exec_prj = subproject('executable-prj')
-# add library
-libexample_proj = subproject('libexample')
-libexample_dep = libexample_proj.get_variable('libexample_dep')
+# create shared library
+libexample = static_library('example',
+  sources,
+  include_directories : libexample_inc_local,
+  install : true,
+  )
+# create var to export to top
+libexample_dep = declare_dependency(include_directories : libexample_inc,
+  link_with : libexample)

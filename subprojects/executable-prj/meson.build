@@ -1,4 +1,4 @@
-project('test_prj', 'cpp', 
+project('executable-prj', 'cpp', 
   meson_version: '>=0.58.0',
   default_options: [
     'cpp_std=c++20',
@@ -28,24 +28,35 @@ add_project_arguments(cppc.get_supported_arguments([
 ]), language: 'cpp')
 ######################################################
 #add cpp-check
-compile_commands_json = join_paths(meson.build_root(), 'compile_commands.json')
+compile_commands_json = join_paths(meson.project_build_root(), 'compile_commands.json')
 run_target('cppcheck',
 		   command: [
 			 'cppcheck',
 			 '--project=' + compile_commands_json,
-			 '--suppress-xml=' + join_paths(meson.source_root(), 'cppcheck-suppressions.xml'),
+			 '--suppress-xml=' + join_paths(meson.project_source_root(), 'cppcheck-suppressions.xml'),
 			 '--error-exitcode=2',
                          '--enable=warning,style,performance,portability,unusedFunction',
                          '--std=c++20',
 		   ], )
 ######################################################
-## set root
-sourceRoot = meson.project_source_root()
-# add tests
-subdir('tests')
-#############################################################
-#add executable
-exec_prj = subproject('executable-prj')
+# add include dir
+incdir = include_directories('include')
+# create sources env var
+sources = []
+# add sources from src dir
+subdir('src')
+# add boost
+boost_dep = dependency('boost')
 # add library
 libexample_proj = subproject('libexample')
 libexample_dep = libexample_proj.get_variable('libexample_dep')
+#############################################################
+executable(
+  meson.project_name(), 
+  sources,
+  include_directories : incdir,
+  dependencies : [boost_dep,libexample_dep],
+  install: true,
+  #native: true)
+  )
+

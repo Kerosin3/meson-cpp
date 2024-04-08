@@ -6,11 +6,12 @@
 #include <thread>
 
 #include "test1.hpp"
+#include "libexample/example.hpp"
 
 int
 main(int argc, char* argv[])
 {
   someFnction();
-  std::cout << "hello X one" << std::endl;
+  libexample::someFnction();
   return EXIT_SUCCESS;
 }
