@@ -1,13 +1,14 @@
-project('executable-prj', 'cpp', 
+project('executable-prj', 'cpp',  
   meson_version: '>=0.58.0',
   default_options: [
     'cpp_std=c++20',
     'build.cpp_std=c++20',
-    'warning_level=3',
+    'warning_level=2',
+    'buildtype=release',
     'b_ndebug=if-release',
-    'force_fallback_for=wlroots,libliftoff,vkroots',
+    'force_fallback_for=wlroots,libliftoff,vkroots'
   ],
-  version : '1.0.0',
+  version : '1.1.0',
   license : 'MIT')
 
 cppc = meson.get_compiler('cpp')
@@ -21,6 +22,7 @@ add_project_arguments(cppc.get_supported_arguments([
   '-Wno-deprecated-volatile',
   '-Wno-ignored-qualifiers', # reshade warning
   '-Wno-missing-braces',
+  '-Wshadow'
 ]), language: 'cpp')
 
 add_project_arguments(cppc.get_supported_arguments([

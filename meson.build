@@ -1,14 +1,18 @@
-project('test_prj', 'cpp', 
+project('test_prj', 'cpp',  
   meson_version: '>=0.58.0',
   default_options: [
     'cpp_std=c++20',
     'build.cpp_std=c++20',
     'warning_level=3',
+    'buildtype=debugoptimized',
     'b_ndebug=if-release',
     'force_fallback_for=wlroots,libliftoff,vkroots',
   ],
+  subproject_dir : 'subprojects',
   version : '1.0.0',
   license : 'MIT')
+
+# BUILD TYPE DEFINES HERE  AND OVERWRITE SUBPROJECTS' SETTINGS#
 
 cppc = meson.get_compiler('cpp')
 add_project_arguments(cppc.get_supported_arguments([
@@ -21,6 +25,7 @@ add_project_arguments(cppc.get_supported_arguments([
   '-Wno-deprecated-volatile',
   '-Wno-ignored-qualifiers', # reshade warning
   '-Wno-missing-braces',
+  '-Wshadow'
 ]), language: 'cpp')
 
 add_project_arguments(cppc.get_supported_arguments([

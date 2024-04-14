@@ -164,6 +164,8 @@ SpacesInCStyleCastParentheses: false
 SpacesInParentheses: false
 SpacesInSquareBrackets: false
 SpaceBeforeSquareBrackets: false
+SeparateDefinitionBlocks: Always
+EmptyLineBeforeAccessModifier: LogicalBlock
 Standard: Auto
 StatementMacros:
   - Q_UNUSED
