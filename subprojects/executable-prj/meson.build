@@ -48,7 +48,14 @@ sources = []
 # add sources from src dir
 subdir('src')
 # add boost
-boost_dep = dependency('boost')
+boost_dep = dependency('boost',version: '>=1.83.0',include_type: 'system',
+                        modules : [ 'thread',
+                                    'filesystem',
+                                    'program_options',
+                                    'log_setup',
+                                    'log', 
+                                    'date_time',
+                                    'system' ])
 # add library
 libexample_proj = subproject('libexample')
 libexample_dep = libexample_proj.get_variable('libexample_dep')
