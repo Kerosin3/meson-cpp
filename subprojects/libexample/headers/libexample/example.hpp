@@ -9,6 +9,8 @@
 #include <ostream>
 #include <stdexcept>
 #include <string_view>
+#include <utility>
+#include <vector>
 
 namespace Myspace
 {
@@ -59,8 +61,17 @@ namespace MyArray
       }
     }
 
+    Xtest& operator++()
+    {
+      m_counter++;
+      std::cout << "increment!" << std::endl;
+      return *this;
+    }
+
   protected:
     std::array<U, size> m_array {};
+    std::vector<std::pair<std::string, int>> m_paires {};
+    size_t m_counter {0};
   };
 
   // inherite general case
@@ -82,4 +93,49 @@ namespace MyArray
       }
     };
   };
+
+  template<typename U, size_t SIZE>
+  class Digit
+  {
+  public:
+    explicit Digit(U arg)
+        : m_count(arg)
+    {
+      for (int count {0}; count < SIZE; ++count) {
+        m_array[count] = m_count + count;
+      }
+    }
+
+    void printData();
+    Digit& operator++(int);
+    void operator()(void);
+
+  protected:
+    U m_count {};
+    std::array<U, SIZE> m_array;
+  };
+
+  template<typename T, size_t SIZE>
+  class DigitX : virtual public Digit<T, SIZE>
+  {
+  public:
+    explicit DigitX(T arg)
+        : Digit<T, SIZE>(arg)
+    {
+    }
+  };
+
+  template<int SIZE>
+  class DigitX<double, SIZE> : virtual public Digit<double, SIZE>
+  {
+    // void printout() const noexcept;
+  public:
+    explicit DigitX(double arg)
+        : Digit<double, SIZE>(arg)
+    {
+    }
+
+    void printData();
+  };
+
 }  // namespace MyArray
