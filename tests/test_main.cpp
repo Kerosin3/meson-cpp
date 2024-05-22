@@ -5,7 +5,7 @@
 
 #include <gtest/gtest.h>
 
-
-TEST(Mytest, failing_test){
-    EXPECT_TRUE(true);
+TEST(Mytest, failing_test)
+{
+  EXPECT_TRUE(true);
 }

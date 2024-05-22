@@ -20,7 +20,6 @@ WarningsAsErrors: >
   bugprone-*,
   modernize-*,
   clang-*,
-  readability-*,
   performance-*,
 
 HeaderFilterRegex: .*

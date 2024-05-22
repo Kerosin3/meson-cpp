@@ -25,7 +25,8 @@ add_project_arguments(cppc.get_supported_arguments([
   '-Wno-deprecated-volatile',
   '-Wno-ignored-qualifiers', # reshade warning
   '-Wno-missing-braces',
-  '-Wshadow'
+  '-Wshadow',
+  '-Wconversion'
 ]), language: 'cpp')
 
 add_project_arguments(cppc.get_supported_arguments([
@@ -51,6 +52,3 @@ subdir('tests')
 #############################################################
 #add executable
 exec_prj = subproject('executable-prj')
-# add library
-libexample_proj = subproject('libexample')
-libexample_dep = libexample_proj.get_variable('libexample_dep')

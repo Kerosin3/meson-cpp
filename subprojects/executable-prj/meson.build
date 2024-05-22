@@ -56,15 +56,12 @@ boost_dep = dependency('boost',version: '>=1.83.0',include_type: 'system',
                                     'log', 
                                     'date_time',
                                     'system' ])
-# add library
-libexample_proj = subproject('libexample')
-libexample_dep = libexample_proj.get_variable('libexample_dep')
 #############################################################
 executable(
   meson.project_name(), 
   sources,
   include_directories : incdir,
-  dependencies : [boost_dep,libexample_dep],
+  dependencies : [boost_dep],
   install: true,
   #native: true)
   )
