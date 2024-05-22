@@ -18,6 +18,7 @@ process_command_line(int, char**);
 int
 main(int argc, char** argv)
 {
+  cout << "Start program!" << "\n";
   try {
     process_command_line(argc, argv);
   } catch (std::exception& e) {
