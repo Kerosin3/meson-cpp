@@ -1,8 +1,8 @@
 project('executable-prj', 'cpp',  
   meson_version: '>=0.58.0',
   default_options: [
-    'cpp_std=c++20',
-    'build.cpp_std=c++20',
+    'cpp_std=c++23',
+    'build.cpp_std=c++2b',
     'warning_level=2',
     'buildtype=release',
     'b_ndebug=if-release',
