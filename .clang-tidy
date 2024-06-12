@@ -15,10 +15,37 @@ Checks: >
   -readability-implicit-bool-conversion,
   -readability-isolate-declaration,
   -readability-magic-numbers,
+#- ninja-generated compilation database contains the linker argument, which ends up unused and triggers this warning for every file
+  - clang-diagnostic-unused-command-line-argument, 
+#- Fuchsia doesn't use C++ exceptions
+  - misc-noexcept*,
+# - We don't allow classes/structs with a mix of private and public members, but all public is fine.
+  - misc-non-private-member-variables-in-classes,
+#- Fuchsia uses old-style C headers
+  - modernize-deprecated-headers,
+# - Not generally used in the Fuchsia codebase
+  - modernize-use-nodiscard,
+# - the check was suggesting to convert \xFF literals, which we'd rather keep in the escaped form.
+  - modernize-raw-string-literal,
+# - concerns about readability of returning braced initialization list for constructor arguments, prefer to use a constructor explicitly
+  - modernize-return-braced-init-list,
+# - enabled the IgnoreImplicitConstructors option to comply with Abseil Tip of the Week #112.
+  - modernize-use-emplace,
+# - flagging all gtest TEST_F
+  - modernize-use-equals-delete,
+# - Fuchsia C++ code typically uses the int foo() style of defining functions, and not the auto foo() -> int style as recommended by this check.
+  - modernize-use-trailing-return-type,
+# - Fuchsia C++ code commonly uses implicit bool cast of pointers and numbers
+  - readability-implicit-bool-conversion,
+# - Zircon code commonly uses paired declarations.
+  - readability-isolate-declaration,
+# - Fuchsia C++ code chooses not to impose a style on this.
+  - readability-uppercase-literal-suffix,
 
 WarningsAsErrors: >
   bugprone-*,
   modernize-*,
+  - modernize-use-trailing-return-type,
   clang-*,
   performance-*,
 
