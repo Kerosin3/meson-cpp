@@ -2,7 +2,7 @@ If:
   PathMatch: .*\.cpp
 
 CompileFlags:
-  Add: [-std=c++23,-D__cpp_concepts=202002L,-header-insertion=never]
+  Add: [-std=c++23,-D__cpp_concepts=202002L]
 
 ---
 

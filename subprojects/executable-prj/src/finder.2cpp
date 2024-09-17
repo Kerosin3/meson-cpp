@@ -1,0 +1,113 @@
+#include <algorithm>
+#include <cstddef>
+#include <iterator>
+#include <string>
+#include <unordered_map>
+#include <vector>
+
+#include "finder.hpp"
+
+#include <boost/filesystem/directory.hpp>
+#include <boost/filesystem/operations.hpp>
+#include <boost/range/iterator_range_core.hpp>
+
+namespace fs = boost::filesystem;
+
+void
+finder::Finder::setExcludeDirs(vector< string > e_dirs)
+{
+  m_excluded_directories = std::move(e_dirs);
+}
+
+void
+
+finder::Finder::setMinSizeCounts(size_t size)
+{
+  m_min_elem_size = size;
+}
+
+void
+finder::Finder::printInfo() const
+{
+  cout << "INFO:\n";
+  cout << "directories:\n";
+  for (size_t i = 0; const auto& elem : m_direstories) {
+    auto fmt = std::format("elem {} = {}\n", i, elem);
+    cout << fmt;
+    i++;
+  }
+  cout << "exclude directories:\n";
+  for (size_t i = 0; const auto& elem : m_excluded_directories) {
+    auto fmt = std::format("elem {} = {}\n", i, elem);
+    cout << fmt;
+    i++;
+  }
+  cout << "files in directories:\n";
+  auto files = getFilenames(this->m_direstories);
+  for (const auto& elem : files) {
+    cout << "your filename is " << elem << "\n";
+  }
+  auto fsizes = filerBySize(m_min_elem_size, files);
+  for (auto const& item : fsizes) {
+    std::cout << "size is:" << item.first << "\n";
+    for (auto const& dirs : item.second) {
+      std::cout << dirs << " ";
+    }
+    cout << "\n";
+  }
+}
+
+std::vector< string >
+finder::Finder::getFilenames(
+    const std::vector< string >& root_directories) const
+{
+  std::vector< string > filenames {};
+  for (const auto& a_dir : root_directories) {
+
+    if (!m_recursive_search) {
+      fs::directory_iterator it_beg(a_dir);
+      fs::directory_iterator it_end;
+      // auto [it_b,it_e] =  boost::make_iterator_range(it_beg,it_end);
+      // std::copy_if(it_beg,it_end,std::back_inserter(filenames), [](auto& dir) {return dir.is_regu;} );
+      std::for_each(it_beg,it_end,[&filenames](const auto& dir) {
+        if (dir.is_regular_file()){
+          filenames.push_back(dir.path().native());
+        }
+      });
+      // for (auto& dir_entity : boost::make_iterator_range(it_beg, it_end)) {
+        // if (dir_entity.is_regular_file()) {
+          // filenames.push_back(dir_entity.path().native());
+        // }
+      //}
+    } else {
+      fs::recursive_directory_iterator rit_beg(a_dir);
+      fs::recursive_directory_iterator rit_end;
+      for (auto& dir_entity : boost::make_iterator_range(rit_beg, rit_end)) {
+        if (dir_entity.is_regular_file()) {
+          filenames.push_back(dir_entity.path().native());
+        }
+      }
+    }
+  }
+  return filenames;
+}
+
+std::unordered_map< size_t, vector< string > >
+finder::Finder::filerBySize(size_t fsize,
+                            const vector< string >& filenames) const
+{
+  std::unordered_map< size_t, vector< string > > store {};
+  for (const auto& elem : filenames) {
+    auto size = boost::filesystem::detail::file_size(elem);
+    if (size < m_min_elem_size)
+      continue;
+    store[size].push_back(elem);
+  }
+  return store;
+}
+
+void
+finder::Finder::execute()
+{
+  // getFilenames(this->m_direstories);
+}
