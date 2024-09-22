@@ -62,6 +62,6 @@ namespace finder
 
     void execute();
 
-    std::vector<std::string> getDuplicates();
+    std::unordered_multimap<u_int32_t,std::string> getDuplicates();
   };
 }  // namespace finder

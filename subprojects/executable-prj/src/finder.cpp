@@ -143,8 +143,11 @@ finder::Finder::setupTargetFiles(std::vector<std::string>&& v_strings)
   });
   }
 }
-std::vector<std::string>
+std::unordered_multimap<u_int32_t,std::string>
 finder::Finder::getDuplicates(){
+  for (auto& fpath : m_filespaths) {
+    cout << "analyze file " << fpath << "\n";
+  };
   cout << "DUPLICATES\n";
   std::vector<std::string> duplicates{};
   std::unordered_multimap<u_int32_t,std::string> mapfilter {};
@@ -164,24 +167,42 @@ finder::Finder::getDuplicates(){
   //initialization
   for (auto& fpath : m_filespaths) {
     f_holders[fpath] = (std::make_unique<Holder<10>> (factory.getInstance(fpath)));
-    f_holders[fpath].get()->showFilename();
-    auto hash = f_holders[fpath].get()->calcBlockHash();
-    printf("crc32 is 0x%X\n", hash);
-    mapfilter.insert({hash,fpath});
   };
-
-  std::erase_if(mapfilter, [&] (auto& elem)
+  auto test_block = [this, &f_holders, &mapfilter]()
   {
-    return mapfilter.count(elem.first) == 1;
-  }
-  );
-  for (const auto& [key,value]: mapfilter) {
+    for (auto& fpath : m_filespaths) {
+      auto hash = f_holders[fpath].get()->calcBlockHash();
+      printf("fname is %s, crc32 is 0x%X\n",fpath.c_str(), hash);
+      mapfilter.insert({hash, fpath});
+    }
+  };
+  auto cond_all_dup = [&mapfilter]() {return std::all_of(mapfilter.begin(),
+                          mapfilter.end(),
+                          [&](auto& elem)
+                          { return mapfilter.count(elem.first) > 1; });};
+  auto cond_none_dup = [&mapfilter](){return std::all_of(mapfilter.begin(),
+                          mapfilter.end(),
+                          [&](auto& elem)
+                          { return mapfilter.count(elem.first) == 1; });};;
+  auto all_eof =  [&mapfilter]() {return mapfilter.count(0x0) == mapfilter.size();};
+  cout << "----\n";
+  do {
+    mapfilter.clear();
+    test_block();
+    cout << "eof size is "  <<  mapfilter.count(0x0) << "\n";
+    cout << "map size is "  <<  mapfilter.size() << "\n";
+    //remove unique
+    std::erase_if(mapfilter,
+                  [&](auto& elem) { return mapfilter.count(elem.first) == 1; });
+                  for (const auto& [key,value]: mapfilter) {
     cout << "--key is "<< key << " value is " << value << "\n";
   }
-  for (auto& file : mapfilter) {
-    duplicates.emplace_back(file.second);
-  }
-  return duplicates;
+    cout << "CYCLE!\n";
+    cout << "all are dup " << cond_all_dup() << ", none dup -> " << cond_none_dup() << "eof if " << all_eof() << "\n";
+  } while ( !(!cond_none_dup() || !all_eof() ));
+  
+
+  return mapfilter;
 }
 
 void
