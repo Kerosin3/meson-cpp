@@ -149,59 +149,57 @@ finder::Finder::getDuplicates(){
     cout << "analyze file " << fpath << "\n";
   };
   cout << "ANALYZING DUPLICATES\n";
-  std::vector<std::string> duplicates{};
   std::unordered_multimap<u_int32_t,std::string> mapfilter {};
   // holders
-  std::map<std::string,std::unique_ptr< Holder<10>>> f_holders{};
+  constexpr ssize_t BUF_SIZE = 4096;
+  std::map<std::string,std::unique_ptr< Holder<BUF_SIZE>>> f_holders{};
   //buffer
-  std::vector<char> buffer(100);
+  std::vector<char> buffer(BUF_SIZE);
   auto ptr = std::make_shared<std::vector<char>>(buffer);
   //factory
-  FileFactory<10> factory{ptr};
+  FileFactory<BUF_SIZE> factory{ptr};
   //initialization
   for (auto& fpath : m_filespaths) {
-    auto x = std::make_unique<Holder<10>> (factory.getInstance(fpath));
+    auto x = std::make_unique<Holder<BUF_SIZE>> (factory.getInstance(fpath));
   }
   if (!factory.initialize())
     throw 1;
+  std::vector<std::string> store {};
   //initialization
   for (auto& fpath : m_filespaths) {
-    f_holders[fpath] = (std::make_unique<Holder<10>> (factory.getInstance(fpath)));
+    f_holders[fpath] = (std::make_unique<Holder<BUF_SIZE>> (factory.getInstance(fpath)));
   };
-  auto test_block = [this, &f_holders, &mapfilter]()
-  {
-    for (auto& fpath : m_filespaths) {
-      cout << "filename is" << fpath << " ";
-      auto hash = f_holders[fpath].get()->calcBlockHash();
-      printf(" crc32 is 0x%X\n", hash);
-      mapfilter.insert({hash, fpath});
-    }
-  };
+    auto all_eof = [&]() {return std::all_of(f_holders.begin(),
+                          f_holders.end(),
+                          [&](auto& elem)
+                          { return elem.second->getBlockHash() == 0; });};
 
-  auto cond_all_dup = [&mapfilter]() {return std::all_of(mapfilter.begin(),
-                          mapfilter.end(),
-                          [&](auto& elem)
-                          { return mapfilter.count(elem.first) > 1; });};
-  auto cond_none_dup = [&mapfilter](){return std::all_of(mapfilter.begin(),
-                          mapfilter.end(),
-                          [&](auto& elem)
-                          { return mapfilter.count(elem.first) == 1; });};;
-  auto all_eof =  [&mapfilter]() {return mapfilter.count(0x0) == mapfilter.size();};
-  cout << "----\n";
-  do {
-    mapfilter.clear();
-    test_block();
-    //remove unique
+    auto eof = [](auto& hash) { return hash.second->getBlockHash() != 0; };
+    auto ieof = [](auto& hash) { return hash.second->getBlockHash() == 0; };
+    do {
+
+      std::ranges::for_each(
+          f_holders | std::views::filter(eof),
+          [&store, &mapfilter](auto& elem)
+          {
+            elem.second->calcBlockHash();
+            auto prev_hash = elem.second->getPrevBlockHash();
+            auto current_hash = elem.second->getBlockHash();
+            auto& current_file = elem.first;
+            printf("filename is %s, current hash is 0x%X, prev: 0x%X\n",
+                   current_file.c_str(),
+                   current_hash,
+                   prev_hash);
+            if (prev_hash != 0 && current_hash == 0) {
+              mapfilter.insert({prev_hash, current_file});
+            }
+          });
+      cout << "CYCLE\n";
+    } while (!all_eof());
+
     std::erase_if(mapfilter,
                   [&](auto& elem) { return mapfilter.count(elem.first) == 1; });
-                  for (const auto& [key,value]: mapfilter) {
-    // cout << "--key is "<< key << " value is " << value << "\n";
-  }
-    cout << "CYCLE!\n";
-    cout << "all are dup " << cond_all_dup() << ", none dup -> " << cond_none_dup() << "eof if " << all_eof() << "\n";
-  } while ( !cond_none_dup() && !all_eof() );
-  
-  return mapfilter;
+    return mapfilter;
 }
 
 void

@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstddef>
+#include <cstdint>
 #include <format>
 #include <iostream>
 #include <string>
@@ -54,7 +55,6 @@ inline uint32_t crc32_calc(uint8_t *p, uint64_t bytelength)
 }
 inline std::pair<std::istreambuf_iterator<char>,ssize_t> readChunk(std::istreambuf_iterator<char>& curr, std::vector<char>& vec,ssize_t blocksize) {
     vec.clear();
-    std::cout << "\n";
     ssize_t readed {0};
     for (readed = 0; curr != std::istreambuf_iterator<char>() && readed < blocksize; ++readed, ++curr) {
         // std::cout << "data is " << *curr << "\n";
@@ -68,7 +68,8 @@ template<std::size_t BLOCKSIZE>
 class Holder{
   std::ifstream m_file {};
   std::shared_ptr<std::vector<char>> m_buf;
-  uint32_t m_current_block_hash {};
+  uint32_t m_current_block_hash {UINT32_MAX};
+  uint32_t m_prev_block_hash {};
   bool m_is_valid {false};
   std::string m_filename{};
 
@@ -84,13 +85,13 @@ class Holder{
   {
     auto iter = std::istreambuf_iterator<char> (m_file);
     auto [iresult,readed] = readChunk(iter, *m_buf, BLOCKSIZE);
-    // eof
-    if (readed == 0)
+    m_prev_block_hash = m_current_block_hash;
+    if (!readed){
+      m_current_block_hash = 0;
       return 0;
+    }
 	  m_current_block_hash =
         crc32_calc(reinterpret_cast< uint8_t* >(m_buf->data()), readed);
-    // if (m_current_block_hash == 0x852EECFD)
-      // return 0;
     return m_current_block_hash;
   }
 
@@ -98,8 +99,15 @@ class Holder{
   {
     return m_current_block_hash;
   }
+  uint32_t getPrevBlockHash()
+  {
+    return m_prev_block_hash;
+  }
   void showFilename() const {
     std::cout << "filename: " << m_filename << "\n";
+  }
+  std::string getFilename() const {
+    return m_filename;
   }
 };
 

@@ -6,6 +6,7 @@
 #include <string>
 #include <string_view>
 #include <vector>
+#include <ranges>
 #include "analyzer.hpp"
 
 #include <boost/filesystem.hpp>
