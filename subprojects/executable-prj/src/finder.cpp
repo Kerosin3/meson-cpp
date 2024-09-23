@@ -168,23 +168,12 @@ finder::Finder::getDuplicates(){
   for (auto& fpath : m_filespaths) {
     f_holders[fpath] = (std::make_unique<Holder<10>> (factory.getInstance(fpath)));
   };
-  // get rid out smaller than block
-  auto small = std::vector<std::string> {};
-  std::erase_if(m_filespaths, [&](auto& elem) {
-      auto hash = f_holders[elem].get()->calcBlockHash();
-      if (hash != 0)
-        mapfilter.insert({hash, elem});
-      if (hash == 0){
-        small.push_back(elem);
-        return true;
-      }
-      return false;
-  });
   auto test_block = [this, &f_holders, &mapfilter]()
   {
     for (auto& fpath : m_filespaths) {
+      cout << "filename is" << fpath << " ";
       auto hash = f_holders[fpath].get()->calcBlockHash();
-      printf("fname is %s, crc32 is 0x%X\n",fpath.c_str(), hash);
+      printf(" crc32 is 0x%X\n", hash);
       mapfilter.insert({hash, fpath});
     }
   };
@@ -211,11 +200,7 @@ finder::Finder::getDuplicates(){
     cout << "CYCLE!\n";
     cout << "all are dup " << cond_all_dup() << ", none dup -> " << cond_none_dup() << "eof if " << all_eof() << "\n";
   } while ( !cond_none_dup() && !all_eof() );
-  mapfilter.erase(0);
-  for (auto& elem: small) {
-    mapfilter.insert({0,elem});
-  }  
-
+  
   return mapfilter;
 }
 

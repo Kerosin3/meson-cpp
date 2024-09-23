@@ -9,6 +9,7 @@
 #include <fstream>
 #include <memory>
 #include <filesystem>
+#include <sys/types.h>
 #include "crc32.hpp"
 
 
@@ -51,13 +52,16 @@ inline uint32_t crc32_calc(uint8_t *p, uint64_t bytelength)
     }
     return (crc ^ 0xffffffff);
 }
-inline std::istreambuf_iterator<char> readChunk(std::istreambuf_iterator<char>& curr, std::vector<char>& vec,ssize_t blocksize) {
+inline std::pair<std::istreambuf_iterator<char>,ssize_t> readChunk(std::istreambuf_iterator<char>& curr, std::vector<char>& vec,ssize_t blocksize) {
     vec.clear();
-    for (int i = 0; curr != std::istreambuf_iterator<char>() && i < blocksize; ++i, ++curr) {
+    std::cout << "\n";
+    ssize_t readed {0};
+    for (readed = 0; curr != std::istreambuf_iterator<char>() && readed < blocksize; ++readed, ++curr) {
+        // std::cout << "data is " << *curr << "\n";
         vec.emplace_back(*curr);
     }
     // DumpHex(vec.data(), 10);
-    return curr;
+    return {curr,readed};
 }
 
 template<std::size_t BLOCKSIZE>
@@ -79,11 +83,14 @@ class Holder{
   uint32_t calcBlockHash()
   {
     auto iter = std::istreambuf_iterator<char> (m_file);
-    auto result = readChunk(iter, *m_buf, BLOCKSIZE);
-    if (result == std::istreambuf_iterator<char>()) // eof
+    auto [iresult,readed] = readChunk(iter, *m_buf, BLOCKSIZE);
+    // eof
+    if (readed == 0)
       return 0;
 	  m_current_block_hash =
-        crc32_calc(reinterpret_cast< uint8_t* >(m_buf->data()), BLOCKSIZE);
+        crc32_calc(reinterpret_cast< uint8_t* >(m_buf->data()), readed);
+    // if (m_current_block_hash == 0x852EECFD)
+      // return 0;
     return m_current_block_hash;
   }
 
