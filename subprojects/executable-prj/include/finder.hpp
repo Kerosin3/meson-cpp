@@ -28,6 +28,7 @@ namespace finder
     vector< string > m_direstories;
     vector< string > m_excluded_directories;
     size_t m_min_elem_size {1};
+    size_t m_blocksize {1024};
     bool m_recursive_search {false};
     std::vector< string >  m_filespaths {};
 
@@ -42,6 +43,11 @@ namespace finder
     void setExcludeDirs(vector< string >&& dirs);
 
     void setMinSizeCounts(size_t size);
+
+    void setupBlockSize(size_t size)
+    {
+      m_blocksize = size;
+    }
 
     void setRecursiveSearch(bool arg)
     {

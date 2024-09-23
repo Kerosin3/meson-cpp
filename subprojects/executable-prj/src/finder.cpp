@@ -49,7 +49,7 @@ finder::Finder::setupDirs(){
   for (const auto& a_dir : m_direstories) {
 
     if (!m_recursive_search) {
-      boost::transform(boost::filesystem::directory_iterator(a_dir) | filtered(is_dir),std::back_inserter(directories_list),ret_name);
+      directories_list.push_back(a_dir);
     } else {
       boost::transform(boost::filesystem::recursive_directory_iterator(a_dir) | filtered(is_dir),std::back_inserter(directories_list),ret_name);
     }
@@ -100,6 +100,9 @@ finder::Finder::setupFilesPaths()
       boost::transform(boost::filesystem::recursive_directory_iterator(a_dir) | filtered(is_reg_file),std::back_inserter(m_filespaths),ret_name);
     }
   }
+   for (const auto& elem : m_filespaths) {
+    cout << "Xyour filename is " << elem << "\n";
+  }
 }
 
 void
@@ -143,63 +146,67 @@ finder::Finder::setupTargetFiles(std::vector<std::string>&& v_strings)
   });
   }
 }
-std::unordered_multimap<u_int32_t,std::string>
-finder::Finder::getDuplicates(){
+
+std::unordered_multimap< u_int32_t, std::string >
+finder::Finder::getDuplicates()
+{
+  ssize_t BUF_SIZE = m_blocksize;
   for (auto& fpath : m_filespaths) {
     cout << "analyze file " << fpath << "\n";
   };
   cout << "ANALYZING DUPLICATES\n";
-  std::unordered_multimap<u_int32_t,std::string> mapfilter {};
+  std::unordered_multimap< u_int32_t, std::string > mapfilter {};
   // holders
-  constexpr ssize_t BUF_SIZE = 4096;
-  std::map<std::string,std::unique_ptr< Holder<BUF_SIZE>>> f_holders{};
-  //buffer
-  std::vector<char> buffer(BUF_SIZE);
-  auto ptr = std::make_shared<std::vector<char>>(buffer);
-  //factory
-  FileFactory<BUF_SIZE> factory{ptr};
-  //initialization
+  std::map< std::string, std::unique_ptr< Holder > > f_holders {};
+  // buffer
+  std::vector< char > buffer(BUF_SIZE);
+  auto ptr = std::make_shared< std::vector< char > >(buffer);
+  // factory
+  FileFactory factory {ptr,BUF_SIZE};
+  // initialization
   for (auto& fpath : m_filespaths) {
-    auto x = std::make_unique<Holder<BUF_SIZE>> (factory.getInstance(fpath));
+    auto x = std::make_unique< Holder>(factory.getInstance(fpath));
   }
   if (!factory.initialize())
     throw 1;
-  std::vector<std::string> store {};
-  //initialization
+  std::vector< std::string > store {};
+  // initialization
   for (auto& fpath : m_filespaths) {
-    f_holders[fpath] = (std::make_unique<Holder<BUF_SIZE>> (factory.getInstance(fpath)));
+    f_holders[fpath] =
+        (std::make_unique< Holder >(factory.getInstance(fpath)));
   };
-    auto all_eof = [&]() {return std::all_of(f_holders.begin(),
-                          f_holders.end(),
-                          [&](auto& elem)
-                          { return elem.second->getBlockHash() == 0; });};
+  auto all_eof = [&]()
+  {
+    return std::all_of(f_holders.begin(),
+                       f_holders.end(),
+                       [&](auto& elem)
+                       { return elem.second->getBlockHash() == 0; });
+  };
 
-    auto eof = [](auto& hash) { return hash.second->getBlockHash() != 0; };
-    auto ieof = [](auto& hash) { return hash.second->getBlockHash() == 0; };
-    do {
+  auto eof = [](auto& hash) { return hash.second->getBlockHash() != 0; };
+  do {
+    std::ranges::for_each(
+        f_holders | std::views::filter(eof),
+        [&mapfilter](auto& elem)
+        {
+          elem.second->calcBlockHash();
+          auto prev_hash = elem.second->getPrevBlockHash();
+          auto current_hash = elem.second->getBlockHash();
+          auto& current_file = elem.first;
+          printf("filename is %s, current hash is 0x%X, prev: 0x%X\n",
+                 current_file.c_str(),
+                 current_hash,
+                 prev_hash);
+          if (prev_hash != 0 && current_hash == 0) {
+            mapfilter.insert({prev_hash, current_file});
+          }
+        });
+    cout << "CYCLE\n";
+  } while (!all_eof());
 
-      std::ranges::for_each(
-          f_holders | std::views::filter(eof),
-          [&store, &mapfilter](auto& elem)
-          {
-            elem.second->calcBlockHash();
-            auto prev_hash = elem.second->getPrevBlockHash();
-            auto current_hash = elem.second->getBlockHash();
-            auto& current_file = elem.first;
-            printf("filename is %s, current hash is 0x%X, prev: 0x%X\n",
-                   current_file.c_str(),
-                   current_hash,
-                   prev_hash);
-            if (prev_hash != 0 && current_hash == 0) {
-              mapfilter.insert({prev_hash, current_file});
-            }
-          });
-      cout << "CYCLE\n";
-    } while (!all_eof());
-
-    std::erase_if(mapfilter,
-                  [&](auto& elem) { return mapfilter.count(elem.first) == 1; });
-    return mapfilter;
+  std::erase_if(mapfilter,
+                [&](auto& elem) { return mapfilter.count(elem.first) == 1; });
+  return mapfilter;
 }
 
 void
@@ -209,12 +216,6 @@ finder::Finder::printDuplicates(
   unsigned prev = 0xFFFF;
   ssize_t index {1};
 
-  auto [begin, end] {duplicates.equal_range(0)};
-  if (begin!=end){
-    cout << "less than blocksize files:\n";
-    std::for_each(
-      begin, end, [](auto& x) { cout << "path:" << x.second << "\n"; });
-  }
   for (const auto& [key, value] : duplicates) {
   if (key == prev || key == 0)
       continue;

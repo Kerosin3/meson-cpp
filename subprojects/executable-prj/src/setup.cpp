@@ -49,19 +49,14 @@ setupFinder(int ac, char** av)
     if (vm.count("level")) {
       auto rec_search = vm["level"].as< bool >();
       app.setRecursiveSearch(rec_search);
-    } else {
-      cout << "ignore directories are not set.\n"; //there is default !
     }
-
     // setup min size and sort files
-    if (vm.count("minfile")) {
-      auto minsize = vm["minfile"].as< size_t >();
-      app.setMinSizeCounts(minsize);
-      app.setupFilesPaths();
-      app.filerBySize();
-    } else {
-      cout << "ignore directories are not set.\n"; // there is default !
-    }
+    auto minsize = vm["minfile"].as< size_t >();
+    app.setMinSizeCounts(minsize);
+    app.setupFilesPaths();
+    app.filerBySize();
+    auto blocksize = vm["blocksize"].as< size_t >();
+    app.setupBlockSize(blocksize);
     // setup filterng
     if (vm.count("filter pattern")) {
       auto rec_search = vm["filter pattern"].as< std::string >();
@@ -78,8 +73,6 @@ setupFinder(int ac, char** av)
       //return false;
     }
     app.printDuplicates(app.getDuplicates());
-    
-   
     // app.printInfo();
 
   } catch (std::exception& e) {

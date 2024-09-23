@@ -57,14 +57,12 @@ inline std::pair<std::istreambuf_iterator<char>,ssize_t> readChunk(std::istreamb
     vec.clear();
     ssize_t readed {0};
     for (readed = 0; curr != std::istreambuf_iterator<char>() && readed < blocksize; ++readed, ++curr) {
-        // std::cout << "data is " << *curr << "\n";
         vec.emplace_back(*curr);
     }
     // DumpHex(vec.data(), 10);
     return {curr,readed};
 }
 
-template<std::size_t BLOCKSIZE>
 class Holder{
   std::ifstream m_file {};
   std::shared_ptr<std::vector<char>> m_buf;
@@ -72,6 +70,7 @@ class Holder{
   uint32_t m_prev_block_hash {};
   bool m_is_valid {false};
   std::string m_filename{};
+  inline static ssize_t m_blocksize {1024};
 
   public:
 
@@ -79,12 +78,14 @@ class Holder{
 
   Holder(std::shared_ptr<std::vector<char>> ptr) : m_buf{ptr}, m_is_valid{false}{}
 
-  Holder(std::string& fname,std::shared_ptr<std::vector<char>> ptr) : m_file{fname}, m_buf{ptr}, m_is_valid{true}, m_filename{fname}{}
+  Holder(std::string& fname,std::shared_ptr<std::vector<char>> ptr,ssize_t p_blocksize) : m_file{fname}, m_buf{ptr}, m_is_valid{true}, m_filename{fname}{
+    Holder::m_blocksize = p_blocksize;
+  }
 
   uint32_t calcBlockHash()
   {
     auto iter = std::istreambuf_iterator<char> (m_file);
-    auto [iresult,readed] = readChunk(iter, *m_buf, BLOCKSIZE);
+    auto [iresult,readed] = readChunk(iter, *m_buf, Holder::m_blocksize);
     m_prev_block_hash = m_current_block_hash;
     if (!readed){
       m_current_block_hash = 0;
@@ -112,29 +113,31 @@ class Holder{
 };
 
 
-template <size_t BLOCKSIZE>
 class FileFactory{
 	std::shared_ptr<std::vector<char>> factory_buf;
     bool m_initialized {false};
+    inline static ssize_t m_blocksize {1024};
 
     FileFactory() = delete;
     public:
-    FileFactory(std::shared_ptr<std::vector<char>> buf) : factory_buf{buf}{}
+    FileFactory(std::shared_ptr<std::vector<char>> buf,ssize_t p_blocksize) : factory_buf{buf}{
+      FileFactory::m_blocksize = p_blocksize;
+    }
 
     bool initialize() {
-      if (factory_buf->size() < BLOCKSIZE) {
+      if (factory_buf->size() < FileFactory::m_blocksize) {
         return false;
       }
       m_initialized = true;
       return true;
     }
 
-    Holder<BLOCKSIZE> getInstance(std::string& fname){
+    Holder getInstance(std::string& fname){
       if(!std::filesystem::exists(fname))
         throw std::runtime_error(fname + " not exists" );
       if (std::filesystem::is_empty(fname))
-          return Holder<BLOCKSIZE>{factory_buf};
-      return Holder<BLOCKSIZE>{fname,factory_buf};
+          return Holder{factory_buf};
+      return Holder{fname,factory_buf,FileFactory::m_blocksize};
     }
 
 };
