@@ -77,21 +77,10 @@ setupFinder(int ac, char** av)
       cout << "target files are not set!\n";
       //return false;
     }
-    unsigned i =0;
-    auto dp = app.getDuplicates();
-    for (auto& [k,v] : dp) {
-   cout << "DDD key is " << k << " value is " << v << "\n";
-    }
-    /*
-    std::for_each(dp.begin(),dp.end(), [&](auto& elem){
-      auto [begin,end] { dp.equal_range(elem.first)};
-      for (auto iter {begin}; iter != end; ++ iter){
-      cout << i << "th duplicate is " << iter->first  << " value is " << iter->second << "\n";
-      }
-      i++;
-    });
-    */
-    app.printInfo();
+    app.printDuplicates(app.getDuplicates());
+    
+   
+    // app.printInfo();
 
   } catch (std::exception& e) {
     cerr << "error: " << e.what() << "\n";

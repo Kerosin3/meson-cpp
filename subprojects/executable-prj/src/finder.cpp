@@ -148,7 +148,7 @@ finder::Finder::getDuplicates(){
   for (auto& fpath : m_filespaths) {
     cout << "analyze file " << fpath << "\n";
   };
-  cout << "DUPLICATES\n";
+  cout << "ANALYZING DUPLICATES\n";
   std::vector<std::string> duplicates{};
   std::unordered_multimap<u_int32_t,std::string> mapfilter {};
   // holders
@@ -168,6 +168,18 @@ finder::Finder::getDuplicates(){
   for (auto& fpath : m_filespaths) {
     f_holders[fpath] = (std::make_unique<Holder<10>> (factory.getInstance(fpath)));
   };
+  // get rid out smaller than block
+  auto small = std::vector<std::string> {};
+  std::erase_if(m_filespaths, [&](auto& elem) {
+      auto hash = f_holders[elem].get()->calcBlockHash();
+      if (hash != 0)
+        mapfilter.insert({hash, elem});
+      if (hash == 0){
+        small.push_back(elem);
+        return true;
+      }
+      return false;
+  });
   auto test_block = [this, &f_holders, &mapfilter]()
   {
     for (auto& fpath : m_filespaths) {
@@ -176,6 +188,7 @@ finder::Finder::getDuplicates(){
       mapfilter.insert({hash, fpath});
     }
   };
+
   auto cond_all_dup = [&mapfilter]() {return std::all_of(mapfilter.begin(),
                           mapfilter.end(),
                           [&](auto& elem)
@@ -189,20 +202,46 @@ finder::Finder::getDuplicates(){
   do {
     mapfilter.clear();
     test_block();
-    cout << "eof size is "  <<  mapfilter.count(0x0) << "\n";
-    cout << "map size is "  <<  mapfilter.size() << "\n";
     //remove unique
     std::erase_if(mapfilter,
                   [&](auto& elem) { return mapfilter.count(elem.first) == 1; });
                   for (const auto& [key,value]: mapfilter) {
-    cout << "--key is "<< key << " value is " << value << "\n";
+    // cout << "--key is "<< key << " value is " << value << "\n";
   }
     cout << "CYCLE!\n";
     cout << "all are dup " << cond_all_dup() << ", none dup -> " << cond_none_dup() << "eof if " << all_eof() << "\n";
-  } while ( !(!cond_none_dup() || !all_eof() ));
-  
+  } while ( !cond_none_dup() && !all_eof() );
+  mapfilter.erase(0);
+  for (auto& elem: small) {
+    mapfilter.insert({0,elem});
+  }  
 
   return mapfilter;
+}
+
+void
+finder::Finder::printDuplicates(
+    std::unordered_multimap< u_int32_t, std::string >&& duplicates )
+{
+  unsigned prev = 0xFFFF;
+  ssize_t index {1};
+
+  auto [begin, end] {duplicates.equal_range(0)};
+  if (begin!=end){
+    cout << "less than blocksize files:\n";
+    std::for_each(
+      begin, end, [](auto& x) { cout << "path:" << x.second << "\n"; });
+  }
+  for (const auto& [key, value] : duplicates) {
+  if (key == prev || key == 0)
+      continue;
+  auto [begin, end] {duplicates.equal_range(key)};
+  cout << index << "\'th duplicate:[" << key << "]\n";
+  std::for_each(
+      begin, end, [](auto& x) { cout << "path:" << x.second << "\n"; });
+  prev = key;
+  index++;
+  }
 }
 
 void

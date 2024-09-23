@@ -2,6 +2,7 @@
 
 #include <cstddef>
 #include <iostream>
+#include <ranges>
 
 #include <boost/program_options.hpp>
 

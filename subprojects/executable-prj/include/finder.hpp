@@ -60,6 +60,8 @@ namespace finder
 
     void printInfo();
 
+    void printDuplicates(std::unordered_multimap<u_int32_t,std::string>&&);
+
     void execute();
 
     std::unordered_multimap<u_int32_t,std::string> getDuplicates();
