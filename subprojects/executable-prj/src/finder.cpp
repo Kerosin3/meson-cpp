@@ -147,7 +147,7 @@ finder::Finder::setupTargetFiles(std::vector<std::string>&& v_strings)
   }
 }
 
-std::unordered_multimap< u_int32_t, std::string >
+std::multimap< int32_t, std::string >
 finder::Finder::getDuplicates()
 {
   ssize_t BUF_SIZE = m_blocksize;
@@ -155,7 +155,7 @@ finder::Finder::getDuplicates()
     cout << "analyze file " << fpath << "\n";
   };
   cout << "ANALYZING DUPLICATES\n";
-  std::unordered_multimap< u_int32_t, std::string > mapfilter {};
+  std::multimap< int32_t, std::string > mapfilter {};
   // holders
   std::map< std::string, std::unique_ptr< Holder > > f_holders {};
   // buffer
@@ -180,38 +180,94 @@ finder::Finder::getDuplicates()
     return std::all_of(f_holders.begin(),
                        f_holders.end(),
                        [&](auto& elem)
-                       { return elem.second->getBlockHash() == 0; });
+                       {return elem.second->m_eof_reached ; });
   };
-
-  auto eof = [](auto& hash) { return hash.second->getBlockHash() != 0; };
+  auto files_tested = [&](auto& fname) {
+     auto ranges { f_holders.equal_range(fname)};
+     return std::all_of(ranges.first,ranges.second,[&](auto& elem){
+      return elem.second->getBlockHash() == 0;
+     });
+  };
+  auto eof = [](auto& hash) { return ! hash.second->m_eof_reached ; };
   do {
+        mapfilter.clear();
     std::ranges::for_each(
         f_holders | std::views::filter(eof),
         [&mapfilter](auto& elem)
         {
-          elem.second->calcBlockHash();
           auto prev_hash = elem.second->getPrevBlockHash();
+          elem.second->calcBlockHash();
           auto current_hash = elem.second->getBlockHash();
           auto& current_file = elem.first;
-          printf("filename is %s, current hash is 0x%X, prev: 0x%X\n",
+                   printf("filename is %s, current hash is 0x%X, prev: 0x%X\n",
                  current_file.c_str(),
                  current_hash,
                  prev_hash);
-          if (prev_hash != 0 && current_hash == 0) {
-            mapfilter.insert({prev_hash, current_file});
+          // insert element
+          if (current_hash != 0) {
+            mapfilter.insert({current_hash, current_file});
           }
         });
-    cout << "CYCLE\n";
-  } while (!all_eof());
+        // erase single elements
+        std::erase_if(mapfilter,
+                [&](auto& elem) {
+                   auto single_element = mapfilter.count(elem.first) == 1;
+                   //remove from files list
+                   if (single_element)
+                     f_holders.erase(elem.second);
+                   return single_element;
+                   });
+      //
+        //iterate over >2 hashes
+        for (auto it = mapfilter.begin(), end = mapfilter.end(); it != end;
+             it = mapfilter.upper_bound(it->first))
+        {
+          printf("your hash is 0X%X\n", it->first);
+          // get filenames per hash
+          auto files {mapfilter.equal_range(it->first)};
+          // iterage over simular files
+          std::multimap< u_int32_t, std::string > d_filter {};
+          // for each file
+          for (auto same_file = files.first; same_file != files.second;
+               ++same_file) {
+            cout << "files are " << same_file->second << "\n";
+            auto current_hash =
+                f_holders.find(same_file->second)->second->calcBlockHash();
+            //  insert hash
+            d_filter.insert({current_hash, same_file->second});
+          }
+          std::erase_if(d_filter,
+                        [&](auto& elem)
+                        {
+                          cout << "test\n";
+                          auto single_element = d_filter.count(elem.first) == 1;
+                          // auto is_zero = d_filter.find(0);
+                          // remove from files list
+                          if (single_element) {
+                            f_holders.erase(elem.second);
+                          }
+                          return single_element;
+                        });
 
-  std::erase_if(mapfilter,
-                [&](auto& elem) { return mapfilter.count(elem.first) == 1; });
+          d_filter.clear();
+        };
+
+        cout << "CYCLE! " << all_eof() << " \n";
+  } while (!all_eof());
+  cout << "xxxxxxxxxxxxxxxx\n";
+  std::erase_if(f_holders,
+                [&](auto& elem) {
+                  return (!elem.second->getBlockHash() && !elem.second->getPrevBlockHash());
+                   });
+  for (auto& rest : f_holders){
+    cout << "left are " << rest.first << " prev hash is " << rest.second->getPrevBlockHash() << "current hash " << rest.second->getBlockHash() <<"\n";
+  }
   return mapfilter;
 }
 
 void
 finder::Finder::printDuplicates(
-    std::unordered_multimap< u_int32_t, std::string >&& duplicates )
+    std::multimap< int32_t, std::string >&& duplicates )
 {
   unsigned prev = 0xFFFF;
   ssize_t index {1};

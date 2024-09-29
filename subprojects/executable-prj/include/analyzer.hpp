@@ -66,41 +66,45 @@ inline std::pair<std::istreambuf_iterator<char>,ssize_t> readChunk(std::istreamb
 class Holder{
   std::ifstream m_file {};
   std::shared_ptr<std::vector<char>> m_buf;
-  uint32_t m_current_block_hash {UINT32_MAX};
-  uint32_t m_prev_block_hash {};
-  bool m_is_valid {false};
+  int32_t m_current_block_hash {0};
+  int32_t m_prev_block_hash {0};
   std::string m_filename{};
   inline static ssize_t m_blocksize {1024};
 
   public:
+  bool m_eof_reached {false};
+  ssize_t m_iterations {0};
+
 
   Holder() = delete;
 
-  Holder(std::shared_ptr<std::vector<char>> ptr) : m_buf{ptr}, m_is_valid{false}{}
+  Holder(std::shared_ptr<std::vector<char>> ptr) : m_buf{ptr}, m_eof_reached{false}{}
 
-  Holder(std::string& fname,std::shared_ptr<std::vector<char>> ptr,ssize_t p_blocksize) : m_file{fname}, m_buf{ptr}, m_is_valid{true}, m_filename{fname}{
+  Holder(std::string& fname,std::shared_ptr<std::vector<char>> ptr,ssize_t p_blocksize) : m_file{fname}, m_buf{ptr}, m_eof_reached{false}, m_filename{fname}{
     Holder::m_blocksize = p_blocksize;
   }
 
-  uint32_t calcBlockHash()
+  int32_t calcBlockHash()
   {
     auto iter = std::istreambuf_iterator<char> (m_file);
     auto [iresult,readed] = readChunk(iter, *m_buf, Holder::m_blocksize);
     m_prev_block_hash = m_current_block_hash;
     if (!readed){
+      m_eof_reached = true;
       m_current_block_hash = 0;
       return 0;
     }
+    m_iterations++;
 	  m_current_block_hash =
         crc32_calc(reinterpret_cast< uint8_t* >(m_buf->data()), readed);
     return m_current_block_hash;
   }
 
-  uint32_t getBlockHash()
+  int32_t getBlockHash() const
   {
     return m_current_block_hash;
   }
-  uint32_t getPrevBlockHash()
+  int32_t getPrevBlockHash() const
   {
     return m_prev_block_hash;
   }
@@ -109,6 +113,10 @@ class Holder{
   }
   std::string getFilename() const {
     return m_filename;
+  }
+
+  friend bool operator == (const Holder& h1, const Holder& h2){
+    return ((h1.getBlockHash() == h2.getBlockHash()) && (h1.getPrevBlockHash() == h2.getPrevBlockHash()));
   }
 };
 

@@ -3,6 +3,7 @@
 #include <cstddef>
 #include <format>
 #include <iostream>
+#include <map>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -67,10 +68,10 @@ namespace finder
 
     void printInfo();
 
-    void printDuplicates(std::unordered_multimap<u_int32_t,std::string>&&);
+    void printDuplicates(std::multimap<int32_t,std::string>&&);
 
     void execute();
 
-    std::unordered_multimap<u_int32_t,std::string> getDuplicates();
+    std::multimap<int32_t,std::string> getDuplicates();
   };
 }  // namespace finder
