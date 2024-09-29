@@ -241,8 +241,6 @@ finder::Finder::getDuplicates()
                         {
                           cout << "test\n";
                           auto single_element = d_filter.count(elem.first) == 1;
-                          // auto is_zero = d_filter.find(0);
-                          // remove from files list
                           if (single_element) {
                             f_holders.erase(elem.second);
                           }
@@ -254,6 +252,7 @@ finder::Finder::getDuplicates()
 
         cout << "CYCLE! " << all_eof() << " \n";
   } while (!all_eof());
+  mapfilter.clear();
   cout << "xxxxxxxxxxxxxxxx\n";
   std::erase_if(f_holders,
                 [&](auto& elem) {
@@ -261,6 +260,10 @@ finder::Finder::getDuplicates()
                    });
   for (auto& rest : f_holders){
     cout << "left are " << rest.first << " prev hash is " << rest.second->getPrevBlockHash() << "current hash " << rest.second->getBlockHash() <<"\n";
+    mapfilter.insert({rest.second->getPrevBlockHash(), rest.first});
+  }
+  for (auto& [k,v] : mapfilter) {
+  cout << "ker is " << k << " value is " << v << "\n";
   }
   return mapfilter;
 }
@@ -269,6 +272,7 @@ void
 finder::Finder::printDuplicates(
     std::multimap< int32_t, std::string >&& duplicates )
 {
+  cout << "duplicates are:\n";
   unsigned prev = 0xFFFF;
   ssize_t index {1};
 
