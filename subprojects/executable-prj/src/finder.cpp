@@ -2,6 +2,7 @@
 #include <cctype>
 #include <cstddef>
 #include <cstdint>
+#include <exception>
 #include <iostream>
 #include <iterator>
 #include <memory>
@@ -151,29 +152,29 @@ std::multimap< int32_t, std::string >
 finder::Finder::getDuplicates()
 {
   ssize_t BUF_SIZE = m_blocksize;
-  for (auto& fpath : m_filespaths) {
-    cout << "analyze file " << fpath << "\n";
-  };
-  cout << "ANALYZING DUPLICATES\n";
+  cout << "ANALYZING DUPLICATESx\n";
   std::multimap< int32_t, std::string > mapfilter {};
   // holders
   std::map< std::string, std::unique_ptr< Holder > > f_holders {};
   // buffer
-  std::vector< char > buffer(BUF_SIZE*2);
+  std::vector< char > buffer(BUF_SIZE);
   auto ptr = std::make_shared< std::vector< char > >(buffer);
   // factory
   FileFactory factory {ptr,BUF_SIZE};
-  // initialization
-  for (auto& fpath : m_filespaths) {
-    auto x = std::make_unique< Holder>(factory.getInstance(fpath));
-  }
   if (!factory.initialize())
     throw 1;
   std::vector< std::string > store {};
   // initialization
   for (auto& fpath : m_filespaths) {
-    f_holders[fpath] =
-        (std::make_unique< Holder >(factory.getInstance(fpath)));
+    try {
+      auto an_instance = std::make_unique< Holder >(factory.getInstance(fpath));
+      f_holders[fpath] = std::move(an_instance);
+    } catch (const std::ios_base::failure& e) {
+      std::cerr << e.code().message() << "\n";
+      std::cerr << "error: " << std::strerror(errno) << "\n";
+    } catch (...) {
+      std::cerr << "catched unknown exception\n";
+    }
   };
   auto all_eof = [&]()
   {
@@ -182,12 +183,6 @@ finder::Finder::getDuplicates()
                        [&](auto& elem)
                        {return elem.second->m_eof_reached ; });
   };
-  auto files_tested = [&](auto& fname) {
-     auto ranges { f_holders.equal_range(fname)};
-     return std::all_of(ranges.first,ranges.second,[&](auto& elem){
-      return elem.second->getBlockHash() == 0;
-     });
-  };
   auto eof = [](auto& hash) { return ! hash.second->m_eof_reached ; };
   do {
         mapfilter.clear();
@@ -195,66 +190,38 @@ finder::Finder::getDuplicates()
         f_holders | std::views::filter(eof),
         [&mapfilter](auto& elem)
         {
-          auto prev_hash = elem.second->getPrevBlockHash();
-          std::cout << "------\n";
           elem.second->calcBlockHash();
           auto current_hash = elem.second->getBlockHash();
           auto& current_file = elem.first;
-                   printf("filename is %s, current hash is 0x%X, prev: 0x%X\n",
-                 current_file.c_str(),
-                 current_hash,
-                 prev_hash);
-          // insert element
-          std::cout << "------xx\n";
           if (current_hash != 0 ){
             mapfilter.insert({current_hash, current_file});
           }
-          // if (!current_hash && prev_hash != 0 ){
-            // mapfilter.insert({current_hash, current_file});
-          // }
         });
-        // erase single elements
         std::erase_if(mapfilter,
                 [&](auto& elem) {
                    auto single_element = mapfilter.count(elem.first) == 1;
-                   //remove from files list
                    if (single_element)
                      f_holders.erase(elem.second);
                    return single_element;
                    });
-      //
-        //iterate over >2 hashes
         for (auto it = mapfilter.begin(), end = mapfilter.end(); it != end;
              it = mapfilter.upper_bound(it->first))
         {
-          printf("your hash is 0X%X\n", it->first);
-          // get filenames per hash
           auto files {mapfilter.equal_range(it->first)};
-          // iterage over simular files
           std::multimap< u_int32_t, std::string > d_filter {};
-          // for each file
           for (auto same_file = files.first; same_file != files.second;
                ++same_file) {
-            cout << "files are " << same_file->second << "\n";
             auto current_hash =
                 f_holders.find(same_file->second)->second->calcBlockHash();
-            //  insert hash
             d_filter.insert({current_hash, same_file->second});
           }
           std::for_each(d_filter.begin(),d_filter.end(),
                         [&](auto& elem)
                         {
-                          //remove single elements
                           bool erase_elem = (d_filter.count(elem.first) == 1);
-                          auto eof_file = f_holders.find(elem.second)->second->m_eof_reached;
-                          cout << "test file : " << elem.second << " " << erase_elem << " eof is " << eof_file << "\n";
-                          if (erase_elem)
-                            cout << "hash is -----" << f_holders.find(elem.second)->second->getBlockHash() << "\n";
                           if (erase_elem) {
-                            std::cout << "erasing: " << elem.second << "\n";
                             f_holders.erase(elem.second);
                           }
-                          // return single_element;
                         });
 
           d_filter.clear();
@@ -263,18 +230,18 @@ finder::Finder::getDuplicates()
         cout << "CYCLE! " << all_eof() << " \n";
   } while (!all_eof());
   mapfilter.clear();
-  cout << "xxxxxxxxxxxxxxxx\n";
-  // std::erase_if(f_holders,
-                // [&](auto& elem) {
-                  // return (!elem.second->getBlockHash() && !elem.second->getPrevBlockHash());
-                  //  });
   for (auto& rest : f_holders){
-    cout << "left are " << rest.first << " prev hash is " << rest.second->getPrevBlockHash() << "current hash " << rest.second->getBlockHash() <<"\n";
-    mapfilter.insert({rest.second->getPrevBlockHash()+ rest.second->getBlockHash(), rest.first});
+    cout << "left are " << rest.first << " prev hash is " << rest.second->getPrevBlockHash() << "current hash " << rest.second->getBlockHash() << "count " << f_holders.count(rest.first) <<"\n";
+    mapfilter.insert({rest.second->getPrevBlockHash() + rest.second->m_iterations, rest.first});
   }
   for (auto& [k,v] : mapfilter) {
     cout << "ker is " << k << " value is " << v << "\n";
   }
+  //  std::erase_if(mapfilter,
+                // [&](auto& elem) {
+                  // return ( mapfilter.count(elem.first) <= 1);
+                  //  });
+
   std::cout << "OUT!!!!\n";
   return mapfilter;
 }
@@ -291,6 +258,8 @@ finder::Finder::printDuplicates(
   if (key == prev)
       continue;
   auto [begin, end] {duplicates.equal_range(key)};
+  if (duplicates.count(key) == 1)
+    continue;
   cout << index << "\'th duplicate:[" << key << "]\n";
   std::for_each(
       begin, end, [](auto& x) { cout << "path:" << x.second << "\n"; });

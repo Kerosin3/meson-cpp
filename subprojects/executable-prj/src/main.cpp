@@ -20,6 +20,8 @@
 #include <utility>
 #include <vector>
 #include <boost/program_options.hpp>
+#include <fcntl.h>
+#include <sys/resource.h>
 
 namespace po = boost::program_options;
 
@@ -33,6 +35,18 @@ int
 main(int argc, char** argv)
 {
   cout << "Start program!\n";
+  struct rlimit rlim;
+  int err;
+  err = getrlimit(RLIMIT_NOFILE, &rlim);
+  if (err < 0) {
+    perror("getrlimit");
+    exit(1);
+  }
+  err = getrlimit(RLIMIT_NOFILE, &rlim);
+  if (err < 0) {
+    perror("setrlimit");
+    exit(1);
+  }
   setupFinder(argc,argv);
   return EXIT_SUCCESS;
 }

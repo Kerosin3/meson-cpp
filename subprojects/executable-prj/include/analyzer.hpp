@@ -2,6 +2,7 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <cstring>
 #include <exception>
 #include <format>
 #include <iostream>
@@ -71,28 +72,24 @@ class Holder{
   int32_t m_prev_block_hash {0};
   std::ifstream m_file;
   inline static ssize_t m_blocksize {1024};
+  ssize_t m_serial {0};
 
   public:
   bool m_eof_reached {false};
   ssize_t m_iterations {0};
-  static inline ssize_t m_nopened {0};
-
 
   Holder() = delete;
+  private:
+  Holder(std::string& filename,ssize_t p_blocksize, std::shared_ptr<std::vector<char>> ptr) : m_filename{filename}, m_buf{ptr} {
 
-  Holder(std::shared_ptr<std::vector<char>> ptr) : m_buf{ptr}{}
-
-  Holder(std::string& fname,std::shared_ptr<std::vector<char>> ptr,ssize_t p_blocksize) : m_buf{ptr}, m_filename{fname}{
     Holder::m_blocksize = p_blocksize;
-    m_nopened++;
+  }
+  public:
+  explicit Holder(std::string& filename,std::shared_ptr<std::vector<char>> ptr, ssize_t p_blocksize,ssize_t serial) : Holder{filename,p_blocksize,ptr}{
+    m_serial = serial;
     m_file.exceptions ( std::ifstream::failbit | std::ifstream::badbit );
-    std::cout << m_nopened << " opening file " << m_filename << "\n";
-    try {
+    std::cout << serial << " opening file " << m_filename << "\n";
       m_file.open(m_filename,std::ios::binary);
-    } catch (std::system_error& e) {
-      std::cerr << e.code().message() << std::endl;
-      std::terminate();
-    }
   }
 
   int32_t calcBlockHash()
@@ -139,6 +136,7 @@ class FileFactory{
 	std::shared_ptr<std::vector<char>> factory_buf;
     bool m_initialized {false};
     inline static ssize_t m_blocksize {1024};
+    inline static ssize_t m_opened_files {0};
 
     FileFactory() = delete;
     public:
@@ -157,9 +155,7 @@ class FileFactory{
     Holder getInstance(std::string& fname){
       if(!std::filesystem::exists(fname))
         throw std::runtime_error(fname + " not exists" );
-      // if (std::filesystem::is_empty(fname))
-          // return Holder{factory_buf};
-      return Holder{fname,factory_buf,FileFactory::m_blocksize};
+      return Holder{fname,factory_buf,FileFactory::m_blocksize,++m_opened_files};
     }
 
 };
