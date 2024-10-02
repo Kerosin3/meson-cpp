@@ -2,6 +2,7 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <exception>
 #include <format>
 #include <iostream>
 #include <string>
@@ -59,34 +60,47 @@ inline std::pair<std::istreambuf_iterator<char>,ssize_t> readChunk(std::istreamb
     for (readed = 0; curr != std::istreambuf_iterator<char>() && readed < blocksize; ++readed, ++curr) {
         vec.emplace_back(*curr);
     }
-    // DumpHex(vec.data(), 10);
+    // DumpHex(vec.data(), 60);
     return {curr,readed};
 }
 
 class Holder{
-  std::ifstream m_file {};
-  std::shared_ptr<std::vector<char>> m_buf;
+  std::shared_ptr<std::vector<char>> m_buf {};
+  std::string m_filename{};
   int32_t m_current_block_hash {0};
   int32_t m_prev_block_hash {0};
-  std::string m_filename{};
+  std::ifstream m_file;
   inline static ssize_t m_blocksize {1024};
 
   public:
   bool m_eof_reached {false};
   ssize_t m_iterations {0};
+  static inline ssize_t m_nopened {0};
 
 
   Holder() = delete;
 
-  Holder(std::shared_ptr<std::vector<char>> ptr) : m_buf{ptr}, m_eof_reached{false}{}
+  Holder(std::shared_ptr<std::vector<char>> ptr) : m_buf{ptr}{}
 
-  Holder(std::string& fname,std::shared_ptr<std::vector<char>> ptr,ssize_t p_blocksize) : m_file{fname}, m_buf{ptr}, m_eof_reached{false}, m_filename{fname}{
+  Holder(std::string& fname,std::shared_ptr<std::vector<char>> ptr,ssize_t p_blocksize) : m_buf{ptr}, m_filename{fname}{
     Holder::m_blocksize = p_blocksize;
+    m_nopened++;
+    m_file.exceptions ( std::ifstream::failbit | std::ifstream::badbit );
+    std::cout << m_nopened << " opening file " << m_filename << "\n";
+    try {
+      m_file.open(m_filename,std::ios::binary);
+    } catch (std::system_error& e) {
+      std::cerr << e.code().message() << std::endl;
+      std::terminate();
+    }
   }
 
   int32_t calcBlockHash()
   {
+    if (m_eof_reached)
+      return 0;
     auto iter = std::istreambuf_iterator<char> (m_file);
+    std::cout << "zfile: " << m_filename << " open is " << m_file.is_open() << " \n";
     auto [iresult,readed] = readChunk(iter, *m_buf, Holder::m_blocksize);
     m_prev_block_hash = m_current_block_hash;
     if (!readed){
@@ -143,8 +157,8 @@ class FileFactory{
     Holder getInstance(std::string& fname){
       if(!std::filesystem::exists(fname))
         throw std::runtime_error(fname + " not exists" );
-      if (std::filesystem::is_empty(fname))
-          return Holder{factory_buf};
+      // if (std::filesystem::is_empty(fname))
+          // return Holder{factory_buf};
       return Holder{fname,factory_buf,FileFactory::m_blocksize};
     }
 
