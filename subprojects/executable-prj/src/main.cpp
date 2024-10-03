@@ -42,7 +42,8 @@ main(int argc, char** argv)
     perror("getrlimit");
     exit(1);
   }
-  err = getrlimit(RLIMIT_NOFILE, &rlim);
+  rlim.rlim_cur = 65535;
+  err = setrlimit(RLIMIT_NOFILE,&rlim);
   if (err < 0) {
     perror("setrlimit");
     exit(1);
