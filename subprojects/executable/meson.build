@@ -1,9 +1,10 @@
-project('executable-prj', 'cpp',  
+project('executable', 'cpp',
   meson_version: '>=0.58.0',
   default_options: [
     'cpp_std=c++20',
     'build.cpp_std=c++20',
     'warning_level=2',
+    'strip=yes',
     'buildtype=release',
     'b_ndebug=if-release',
     'force_fallback_for=wlroots,libliftoff,vkroots'
@@ -56,16 +57,18 @@ boost_dep = dependency('boost',version: '>=1.83.0',include_type: 'system',
                                     'log', 
                                     'date_time',
                                     'system' ])
-# add library
-libexample_proj = subproject('libexample')
-libexample_dep = libexample_proj.get_variable('libexample_dep')
+message('OUTPUT ARE: ',meson.global_build_root())
+# add library async
+lib1 = 'libasync'
+lib1_proj = subproject(lib1)
+lib1_dep = lib1_proj.get_variable('libasync_dep')
 #############################################################
 executable(
-  meson.project_name(), 
+  meson.project_name(),
   sources,
   include_directories : incdir,
-  dependencies : [boost_dep,libexample_dep],
+  dependencies : [boost_dep,lib1_dep],
   install: true,
-  #native: true)
+  install_dir: meson.global_build_root()
   )
 

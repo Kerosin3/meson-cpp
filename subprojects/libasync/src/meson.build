@@ -1,3 +1,3 @@
 sources += files(
-  'example.cpp',
+  'async.cpp',
 )

@@ -164,14 +164,11 @@ SpacesInCStyleCastParentheses: false
 SpacesInParentheses: false
 SpacesInSquareBrackets: false
 SpaceBeforeSquareBrackets: false
-SeparateDefinitionBlocks: Always
-EmptyLineBeforeAccessModifier: LogicalBlock
 Standard: Auto
 StatementMacros:
   - Q_UNUSED
   - QT_REQUIRE_VERSION
 TabWidth: 8
-NamespaceIndentation: All
 UseCRLF: false
 UseTab: Never
 WhitespaceSensitiveMacros:
