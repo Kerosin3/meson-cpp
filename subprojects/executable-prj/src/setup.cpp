@@ -37,14 +37,6 @@ setupFinder(int ac, char** av)
     auto app {Finder {dirs}};
     // setup Dirs
     app.setupDirs();
-    // set ignore dirs
-    if (vm.count("idirs")) {
-      std::vector< std::string > idirs =
-          vm["idirs"].as< std::vector< std::string > >();
-      app.setExcludeDirs(std::move(idirs));
-    } else {
-      cout << "ignore directories are not set.\n";
-    }
     // setup recursive search
     if (vm.count("level")) {
       auto rec_search = vm["level"].as< bool >();
@@ -54,6 +46,14 @@ setupFinder(int ac, char** av)
     auto minsize = vm["minfile"].as< size_t >();
     app.setMinSizeCounts(minsize);
     app.setupFilesPaths();
+    // set ignore dirs
+    if (vm.count("idirs")) {
+      std::vector< std::string > idirs =
+          vm["idirs"].as< std::vector< std::string > >();
+      app.setExcludeDirs(std::move(idirs));
+    } else {
+      cout << "ignore directories are not set.\n";
+    }
     app.filerBySize();
     auto blocksize = vm["blocksize"].as< size_t >();
     app.setupBlockSize(blocksize);

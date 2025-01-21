@@ -16,6 +16,7 @@ project('test_prj', 'cpp',
 
 cppc = meson.get_compiler('cpp')
 add_project_arguments(cppc.get_supported_arguments([
+  '-Wno-sign-compare',
   '-Wno-unused-parameter',
   '-Wno-missing-field-initializers',
   '-Wno-c99-designator',

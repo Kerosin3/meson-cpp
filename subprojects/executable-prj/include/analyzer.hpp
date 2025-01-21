@@ -66,8 +66,8 @@ inline std::pair<std::istreambuf_iterator<char>,ssize_t> readChunk(std::istreamb
 }
 
 class Holder{
-  std::shared_ptr<std::vector<char>> m_buf {};
   std::string m_filename{};
+  std::shared_ptr<std::vector<char>> m_buf {};
   int32_t m_current_block_hash {0};
   int32_t m_prev_block_hash {0};
   std::ifstream m_file;
