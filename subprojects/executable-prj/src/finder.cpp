@@ -160,11 +160,11 @@ finder::Finder::setupTargetFiles(std::vector< std::string >&& v_strings)
 }
 
 // main function to find duplicates
-std::multimap< int32_t, std::string >
+std::unordered_multimap< int32_t, std::string >
 finder::Finder::getDuplicates()
 {
   ssize_t BUF_SIZE = m_blocksize;
-  std::multimap< int32_t, std::string > mapfilter {};
+  std::unordered_multimap< int32_t, std::string > mapfilter {};
   // holders
   std::map< std::string, std::unique_ptr< Holder > > f_holders {};
   // buffer
@@ -194,7 +194,7 @@ finder::Finder::getDuplicates()
                        [&](auto& elem) { return elem.second->m_eof_reached; });
   };
   auto eof = [](auto& hash) { return !hash.second->m_eof_reached; };
-  // main loop
+  // MAIN LOOP
   do {
     mapfilter.clear();
     std::ranges::for_each(f_holders | std::views::filter(eof),
@@ -218,8 +218,7 @@ finder::Finder::getDuplicates()
                     return single_element;
                   });
     // iterate over same hashes block files
-    for (auto it = mapfilter.begin(), end = mapfilter.end(); it != end;
-         it = mapfilter.upper_bound(it->first))
+    for (auto it = mapfilter.begin(), end = mapfilter.end(); it != end;)
     {
       auto files {mapfilter.equal_range(it->first)};
       std::multimap< u_int32_t, std::string > d_filter {};
@@ -240,7 +239,8 @@ finder::Finder::getDuplicates()
                         f_holders.erase(elem.second);
                       }
                     });
-
+      auto [_, new_it] = mapfilter.equal_range(it->first);
+      it = new_it;
     };
   } while (!DONE());
   mapfilter.clear();
@@ -253,7 +253,7 @@ finder::Finder::getDuplicates()
 
 void
 finder::Finder::printDuplicates(
-    std::multimap< int32_t, std::string >&& duplicates)
+    std::unordered_multimap< int32_t, std::string >&& duplicates)
 {
   cout << "duplicates are:\n";
   unsigned prev = 0xFFFF;

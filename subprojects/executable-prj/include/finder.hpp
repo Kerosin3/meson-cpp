@@ -76,8 +76,8 @@ namespace finder
 
     void printInfo();
 
-    void printDuplicates(std::multimap<int32_t,std::string>&&);
+    void printDuplicates(std::unordered_multimap<int32_t,std::string>&&);
 
-    std::multimap<int32_t,std::string> getDuplicates();
+    std::unordered_multimap<int32_t,std::string> getDuplicates();
   };
 }  // namespace finder

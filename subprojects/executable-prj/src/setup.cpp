@@ -69,8 +69,9 @@ setupFinder(int ac, char** av)
       auto target_files = vm["target files"].as< std::vector< std::string > >();
       app.setupTargetFiles(std::move(target_files));
     } else {
-      cout << "target files are not set\n";
+      cout << "target files are not set.\n";
     }
+    cout << "\n";
     app.printDuplicates(app.getDuplicates());
   } catch (std::exception& e) {
     cerr << "error: " << e.what() << "\n";
