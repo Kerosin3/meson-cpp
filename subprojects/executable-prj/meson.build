@@ -1,4 +1,4 @@
-project('executable-prj', 'cpp',  
+project('bayan', 'cpp',  
   meson_version: '>=0.58.0',
   default_options: [
     'cpp_std=c++23',
@@ -29,18 +29,6 @@ add_project_arguments(cppc.get_supported_arguments([
 add_project_arguments(cppc.get_supported_arguments([
   '-ffast-math',
 ]), language: 'cpp')
-######################################################
-#add cpp-check
-compile_commands_json = join_paths(meson.project_build_root(), 'compile_commands.json')
-run_target('cppcheck',
-		   command: [
-			 'cppcheck',
-			 '--project=' + compile_commands_json,
-			 '--suppress-xml=' + join_paths(meson.project_source_root(), 'cppcheck-suppressions.xml'),
-			 '--error-exitcode=2',
-                         '--enable=warning,style,performance,portability,unusedFunction',
-                         '--std=c++20',
-		   ], )
 ######################################################
 # add include dir
 incdir = include_directories('include')

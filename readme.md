@@ -1,4 +1,4 @@
-# CPP EXAMPLE PROJECT
+# FILE FINDER PROJECT
 
 ## REQUIREMENTS
 
@@ -12,6 +12,7 @@
 
 1.  Setup build `meson setup builddir --buildtype=release`
 2.  Compile build `meson compile -C builddir`
+3.  Run finder `./build/subprojects/executable-prj/bayan`
 
 # good coding
 
