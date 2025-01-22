@@ -8,6 +8,14 @@
 #include <string_view>
 #include <vector>
 #include <ranges>
+#include <boost/algorithm/string/case_conv.hpp>
+#include <boost/filesystem/directory.hpp>
+#include <boost/filesystem/operations.hpp>
+#include <boost/filesystem/path.hpp>
+#include <boost/range/adaptors.hpp>
+#include <boost/range/algorithm.hpp>
+#include <boost/regex.hpp>
+#include <sys/types.h>
 #include "analyzer.hpp"
 
 #include <boost/filesystem.hpp>
@@ -37,7 +45,6 @@ namespace finder
   public:
     Finder() = delete;
 
-    void dropFile(const std::string&);
     explicit Finder(vector< string > dirs)
         : m_direstories {std::move(dirs)} {};
 
@@ -69,8 +76,6 @@ namespace finder
     void printInfo();
 
     void printDuplicates(std::multimap<int32_t,std::string>&&);
-
-    void execute();
 
     std::multimap<int32_t,std::string> getDuplicates();
   };

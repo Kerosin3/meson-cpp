@@ -27,7 +27,6 @@ setupFinder(int ac, char** av)
     po::notify(vm);
 
     std::vector< std::string > dirs {};
-    // set dirs
     if (vm.count("dirs")) {
       dirs = vm["dirs"].as< std::vector< std::string > >();
     } else {
@@ -45,6 +44,7 @@ setupFinder(int ac, char** av)
     // setup min size and sort files
     auto minsize = vm["minfile"].as< size_t >();
     app.setMinSizeCounts(minsize);
+    // setup files paths
     app.setupFilesPaths();
     // set ignore dirs
     if (vm.count("idirs")) {
@@ -57,7 +57,7 @@ setupFinder(int ac, char** av)
     app.filerBySize();
     auto blocksize = vm["blocksize"].as< size_t >();
     app.setupBlockSize(blocksize);
-    // setup filterng
+    // setup filtering
     if (vm.count("filter pattern")) {
       auto rec_search = vm["filter pattern"].as< std::string >();
       app.setupFilter(std::move(rec_search));
@@ -69,12 +69,9 @@ setupFinder(int ac, char** av)
       auto target_files = vm["target files"].as< std::vector< std::string > >();
       app.setupTargetFiles(std::move(target_files));
     } else {
-      cout << "target files are not set!\n";
-      //return false;
+      cout << "target files are not set\n";
     }
     app.printDuplicates(app.getDuplicates());
-    // app.printInfo();
-
   } catch (std::exception& e) {
     cerr << "error: " << e.what() << "\n";
     return true;

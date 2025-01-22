@@ -1,30 +1,4 @@
-#include <algorithm>
-#include <cctype>
-#include <cstddef>
-#include <cstdint>
-#include <exception>
-#include <filesystem>
-#include <iostream>
-#include <iterator>
-#include <memory>
-#include <ranges>
-#include <set>
-#include <string>
-#include <unordered_map>
-#include <unordered_set>
-#include <utility>
-#include <vector>
-
 #include "finder.hpp"
-
-#include <boost/algorithm/string/case_conv.hpp>
-#include <boost/filesystem/directory.hpp>
-#include <boost/filesystem/operations.hpp>
-#include <boost/filesystem/path.hpp>
-#include <boost/range/adaptors.hpp>
-#include <boost/range/algorithm.hpp>
-#include <boost/regex.hpp>
-#include <sys/types.h>
 
 namespace fs = boost::filesystem;
 
@@ -131,7 +105,6 @@ finder::Finder::setupFilesPaths()
 void
 finder::Finder::filerBySize()
 {
-  cout << "enter!\n";
   std::erase_if(
       m_filespaths,
       [this](const auto& fpath)
@@ -177,24 +150,19 @@ void
 finder::Finder::setupTargetFiles(std::vector< std::string >&& v_strings)
 {
   for (const auto& file_to_analyze : v_strings) {
-    // if regex there is no need for upper and lower
     std::erase_if(m_filespaths,
                   [&](const auto& fpath)
                   {
-                    // boost::regex pattern {file_to_analyze};
-                    // return
-                    // !boost::regex_match(fs::path(fpath).filename().string(),pattern);
                     return !(fs::path(fpath).filename().string().contains(
                         file_to_analyze));
                   });
   }
 }
-
+// main function to find duplicates
 std::multimap< int32_t, std::string >
 finder::Finder::getDuplicates()
 {
   ssize_t BUF_SIZE = m_blocksize;
-  cout << "ANALYZING DUPLICATESx\n";
   std::multimap< int32_t, std::string > mapfilter {};
   // holders
   std::map< std::string, std::unique_ptr< Holder > > f_holders {};
@@ -204,7 +172,7 @@ finder::Finder::getDuplicates()
   // factory
   FileFactory factory {ptr, BUF_SIZE};
   if (!factory.initialize())
-    throw 1;
+    throw std::runtime_error("error initializing file factory");
   std::vector< std::string > store {};
   // initialization
   for (auto& fpath : m_filespaths) {
@@ -273,28 +241,13 @@ finder::Finder::getDuplicates()
 
       d_filter.clear();
     };
-
-    cout << "CYCLE! " << all_eof() << " \n";
   } while (!all_eof());
   mapfilter.clear();
   for (auto& rest : f_holders) {
-    cout << "left are " << rest.first << " prev hash is "
-         << rest.second->getPrevBlockHash() << "current hash "
-         << rest.second->getBlockHash() << "count "
-         << f_holders.count(rest.first) << "\n";
     mapfilter.insert(
         {rest.second->getPrevBlockHash() + rest.second->m_iterations,
          rest.first});
   }
-  for (auto& [k, v] : mapfilter) {
-    cout << "ker is " << k << " value is " << v << "\n";
-  }
-  //  std::erase_if(mapfilter,
-  // [&](auto& elem) {
-  // return ( mapfilter.count(elem.first) <= 1);
-  //  });
-
-  std::cout << "OUT!!!!\n";
   return mapfilter;
 }
 
@@ -312,18 +265,12 @@ finder::Finder::printDuplicates(
     auto [begin, end] {duplicates.equal_range(key)};
     if (duplicates.count(key) == 1)
       continue;
-    cout << index << "\'th duplicate:[" << key << "]\n";
+    cout << index << "\'th duplicate:\n";
     std::for_each(
-        begin, end, [](auto& x) { cout << "path:" << x.second << "\n"; });
+        begin, end, [](auto& x) { cout << x.second << "\n"; });
     prev = key;
     index++;
   }
-}
-
-void
-finder::Finder::dropFile(const std::string& file)
-{
-  std::erase_if(m_filespaths, [&](const auto& fpath) { return fpath == file; });
 }
 
 void
@@ -332,10 +279,4 @@ finder::Finder::setupFilter(std::string&& filter_str)
   if (!filter_str.empty()) {
     filterFilenames(std::move(filter_str));
   }
-}
-
-void
-finder::Finder::execute()
-{
-  // getFilenames(this->m_direstories);
 }
