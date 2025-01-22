@@ -60,6 +60,7 @@ class Holder
 public:
   bool m_eof_reached {false};
   ssize_t m_iterations {0};
+  ssize_t m_hash_sum {0};
 
   Holder() = delete;
 
@@ -101,6 +102,8 @@ public:
     m_iterations++;
     m_current_block_hash =
         crc32_calc(reinterpret_cast< uint8_t* >(m_buf->data()), readed);
+
+    m_hash_sum += m_current_block_hash;
     return m_current_block_hash;
   }
 

@@ -158,6 +158,7 @@ finder::Finder::setupTargetFiles(std::vector< std::string >&& v_strings)
                   });
   }
 }
+
 // main function to find duplicates
 std::multimap< int32_t, std::string >
 finder::Finder::getDuplicates()
@@ -186,13 +187,14 @@ finder::Finder::getDuplicates()
       std::cerr << "catched unknown exception\n";
     }
   };
-  auto all_eof = [&]()
+  auto DONE = [&]()
   {
     return std::all_of(f_holders.begin(),
                        f_holders.end(),
                        [&](auto& elem) { return elem.second->m_eof_reached; });
   };
   auto eof = [](auto& hash) { return !hash.second->m_eof_reached; };
+  // main loop
   do {
     mapfilter.clear();
     std::ranges::for_each(f_holders | std::views::filter(eof),
@@ -201,7 +203,7 @@ finder::Finder::getDuplicates()
                             elem.second->calcBlockHash();
                             auto current_hash = elem.second->getBlockHash();
                             auto& current_file = elem.first;
-                            // insert non empty files hash
+                            // insert non empty(eof) files hash
                             if (current_hash != 0) {
                               mapfilter.insert({current_hash, current_file});
                             }
@@ -223,12 +225,10 @@ finder::Finder::getDuplicates()
       std::multimap< u_int32_t, std::string > d_filter {};
       for (auto same_file = files.first; same_file != files.second; ++same_file)
       {
-        auto prev_hash =
-            f_holders.find(same_file->second)->second->getPrevBlockHash();
+        auto filet = f_holders.find(same_file->second);
         // calc next hash block
-        auto current_hash =
-            f_holders.find(same_file->second)->second->calcBlockHash();
-        d_filter.insert({current_hash, same_file->second});
+        auto sum = filet->second->m_hash_sum;
+        d_filter.insert({sum, same_file->second});
       }
       // remove unique
       std::for_each(d_filter.begin(),
@@ -241,14 +241,12 @@ finder::Finder::getDuplicates()
                       }
                     });
 
-      d_filter.clear();
     };
-  } while (!all_eof());
+  } while (!DONE());
   mapfilter.clear();
+  // filter results to map
   for (auto& rest : f_holders) {
-    mapfilter.insert(
-        {rest.second->getPrevBlockHash() + rest.second->m_iterations,
-         rest.first});
+    mapfilter.insert({rest.second->m_hash_sum, rest.first});
   }
   return mapfilter;
 }
@@ -268,8 +266,7 @@ finder::Finder::printDuplicates(
     if (duplicates.count(key) == 1)
       continue;
     cout << index << "\'th duplicate:\n";
-    std::for_each(
-        begin, end, [](auto& x) { cout << x.second << "\n"; });
+    std::for_each(begin, end, [](auto& x) { cout << x.second << "\n"; });
     prev = key;
     index++;
   }

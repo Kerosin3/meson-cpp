@@ -16,6 +16,7 @@
 #include <boost/range/algorithm.hpp>
 #include <boost/regex.hpp>
 #include <sys/types.h>
+#include <boost/range/iterator_range.hpp>
 #include "analyzer.hpp"
 
 #include <boost/filesystem.hpp>
