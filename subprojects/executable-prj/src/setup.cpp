@@ -13,7 +13,7 @@ setupFinder(int ac, char** av)
     ("minfile,m",po::value< size_t >()->default_value(1),"set min filesize to index,bytes")
     ("idirs,i",po::value< std::vector< std::string > >()->multitoken(),"set exclude directories")
     ("level,l",po::value< bool >()->default_value(true),"recursive search")
-    ("filter pattern,f",po::value< std::string >(),"set min filesize to index,bytes") // target files
+    ("filter filename pattern,f",po::value< std::string >(),"set filename to filter out") 
     ("target files,t",po::value< std::vector< std::string > >()->multitoken(),"setup target files to analyze")
     ("blocksize,b",po::value< size_t >()->default_value(1024),"read block size,bytes");
 
