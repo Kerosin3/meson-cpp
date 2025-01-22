@@ -223,6 +223,8 @@ finder::Finder::getDuplicates()
       std::multimap< u_int32_t, std::string > d_filter {};
       for (auto same_file = files.first; same_file != files.second; ++same_file)
       {
+        auto prev_hash =
+            f_holders.find(same_file->second)->second->getPrevBlockHash();
         // calc next hash block
         auto current_hash =
             f_holders.find(same_file->second)->second->calcBlockHash();

@@ -1,0 +1,4 @@
+#!/bin/sh
+
+var="/somepath/${1}"
+echo $var
