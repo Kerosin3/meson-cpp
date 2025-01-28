@@ -81,9 +81,9 @@ InputProcessorParser::readInput(std::istringstream& ss)
         }
         if (!m_Commands.empty() & !m_NOpenBracets) {
           // executeCallbacks();
-          std::cout << "CALLBACK4\n";
-          writex();
-          printx();
+          // std::cout << "CALLBACK4\n";
+          // writex();
+          // printx();
         }
       });
 }
