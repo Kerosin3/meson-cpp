@@ -18,9 +18,10 @@ while (std::cin >> input) {
 void
 InputProcessorParser::readInput(std::istringstream& ss)
 {
-  auto thr = std::jthread(
+  thr = std::thread(
       [&]()
       {
+        std::cout << "waiting..\n";
         std::string TmpString {};
         auto printx = [&]()
         {
@@ -37,6 +38,7 @@ InputProcessorParser::readInput(std::istringstream& ss)
           }
         };
         while (std::getline(ss, TmpString)) {
+          proc_sem.get().acquire();
           std::cout << "input: " << TmpString << "\n";
           if (TmpString.empty()) {
             continue;
@@ -48,9 +50,10 @@ InputProcessorParser::readInput(std::istringstream& ss)
           if (isOpBrace(TmpString.at(0))) {
             if (m_NOpenBracets == 0 && !m_Commands.empty()) {
               // executeCallbacks();
+              readed_sem.get().release();
               std::cout << "CALLBACK1\n";
-              printx();
-              writex();
+              // printx();
+              // writex();
               m_Commands.clear();
             }
             m_NOpenBracets++;
@@ -60,8 +63,9 @@ InputProcessorParser::readInput(std::istringstream& ss)
               if (m_NCloseBracets == m_NOpenBracets && !m_Commands.empty()) {
                 //   executeCallbacks();
                 std::cout << "CALLBACK2\n";
-                printx();
-                writex();
+                readed_sem.get().release();
+                // printx();
+                // writex();
                 m_Commands.clear();
               }
               m_NCloseBracets = 0;
@@ -72,19 +76,25 @@ InputProcessorParser::readInput(std::istringstream& ss)
             if (m_Commands.size() == m_BlockSize && m_NOpenBracets == 0) {
               // executeCallbacks();
               std::cout << "CALLBACK3\n";
-              writex();
-              printx();
+              readed_sem.get().release();
+              // writex();
+              // printx();
             }
           }
 
           data_to_write.get().push_back(TmpString);
+          // readed_sem.get().release();
+          proc_sem.get().release();
         }
         if (!m_Commands.empty() & !m_NOpenBracets) {
-          // executeCallbacks();
-          // std::cout << "CALLBACK4\n";
-          // writex();
-          // printx();
+          // x executeCallbacks();
+          // x std::cout << "CALLBACK4\n";
+          // x writex();
+          // x printx();
         }
+
+        done_sem.get().release();
       });
+  thr.detach();
 }
 }  // namespace Processor
