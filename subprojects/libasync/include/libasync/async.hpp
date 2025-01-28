@@ -5,9 +5,25 @@
 #include <map>
 #include <memory>
 #include <sstream>
+#include "processor.hpp"
 
 namespace async
 {
+
+using handle_t = void*;
+
+handle_t
+connect(std::size_t bulk);
+
+void
+receive(handle_t handle, const char* data, std::size_t size);
+
+void
+receiveCin(handle_t handle);
+
+void
+disconnect(handle_t handle);
+
 void
 func1();
 

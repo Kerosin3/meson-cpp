@@ -30,7 +30,7 @@ sources = []
 # add to sources variable
 subdir('src')
 # add include dir
-libasync_inc = include_directories('include')
+libasync_inc = include_directories('include/libasync')
 # create shared library
 libasync = shared_library('async',
   sources,
