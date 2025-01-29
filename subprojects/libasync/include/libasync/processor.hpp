@@ -3,17 +3,18 @@
 #include <condition_variable>
 #include <cstddef>
 #include <format>
+#include <fstream>
 #include <functional>
 #include <iostream>
 #include <istream>
+#include <memory>
 #include <semaphore>
 #include <sstream>
 #include <streambuf>
 #include <string>
 #include <thread>
+#include <utility>
 #include <vector>
-#include <fstream>
-
 
 namespace Processor
 {
@@ -37,7 +38,11 @@ public:
   [[nodiscard]] std::string getCmd() const { return std::format("{}", m_Cmd); }
   [[nodiscard]] std::string getTimestamp()
   {
-    return std::format("{}{}", m_Timestamp, serial.fetch_add(1));
+    return std::format(
+        "{}{}_{}",
+        m_Timestamp,
+        serial.fetch_add(1),
+        std::hash<std::thread::id> {}(std::this_thread::get_id()));
   }
 
 private:
@@ -49,7 +54,7 @@ private:
 class InputProcessorParser
 {
   using data_t = std::vector<std::string>;
-  std::reference_wrapper<data_t> data_to_write;
+  std::shared_ptr<data_t> data_to_write;
   size_t m_NOpenBracets {0};
   size_t m_NCloseBracets {0};
   size_t m_BlockSize {};
@@ -60,7 +65,7 @@ class InputProcessorParser
   std::thread thr;
 
 public:
-  InputProcessorParser(std::reference_wrapper<data_t> data,
+  InputProcessorParser(std::shared_ptr<data_t> data,
                        size_t blocksize,
                        rsema_t rsem,
                        psema_t psem,
@@ -79,15 +84,16 @@ public:
 
 class Printer
 {
-  std::vector<std::string>& cmds;
-  std::jthread out_thread;
+  std::shared_ptr<std::vector<std::string>> cmds;
+  std::thread out_thread;
   rsema_t readed_sem;
   psema_t proc_sem;
+  std::ofstream ofs {"fout", std::ios_base::out | std::ios_base::trunc};
 
   Printer() = delete;
 
 public:
-  Printer(std::vector<std::string>& commands,
+  Printer(std::shared_ptr<std::vector<std::string>> commands,
           rsema_t readed_sema,
           psema_t proc_sema)
       : cmds(commands)
@@ -97,32 +103,42 @@ public:
   }
   void initialize()
   {
-    auto thr = std::jthread(
+    out_thread = std::thread(
         [&]()
         {
-          std::ofstream ofs("fout", std::ios_base::out | std::ios_base::trunc);
+          /*
           auto writex = [&]()
           {
-            for (auto& elem : cmds) {
+            std::cout << "wrote\n";
+            for (auto& elem : *cmds) {
               ofs << elem << " ";
             }
             ofs << "\n";
             ofs.flush();
           };
-          for (;;) {
+          */
+          while (cmds) {
             readed_sem.get().acquire();
             // if (cmds.size() == 3) {
-            std::cout << "block:";
-            for (auto& elem : cmds) {
+            std::cout << "||block:";
+            for (auto& elem : *cmds) {
               std::cout << elem << " ";
+              ofs << elem << " ";
               // }
-              std::cout << "\n";
             }
-            writex();
-            cmds.clear();
+            // ofs.flush();
+            // writex();
+            std::cout << "\n";
+            cmds->clear();
             proc_sem.get().release();
-          }
+          };
         });
+    out_thread.detach();
+  }
+  ~Printer()
+  {
+    ofs.flush();
+    std::cout << "Destroy Pri\n";
   }
 };
 
@@ -132,19 +148,21 @@ class DataProcessor
   std::counting_semaphore<1> processed {1};
   std::binary_semaphore input_readed {false};
   std::binary_semaphore input_done {false};
-  std::vector<std::string> readed_data;
-  InputProcessorParser input_parser {std::ref(readed_data),
+  std::vector<std::string> data;
+  std::shared_ptr<std::vector<std::string>> RT_readed_data;
+  InputProcessorParser input_parser {RT_readed_data,
                                      m_bulk_size,
                                      std::ref(input_readed),
                                      std::ref(processed),
                                      std::ref(input_done)};
-  Printer printer1 {readed_data, input_readed, processed};
+  Printer printer1 {RT_readed_data, input_readed, processed};
   std::thread input_thread;
 
 public:
   DataProcessor() = delete;
   explicit DataProcessor(size_t size)
       : m_bulk_size(size)
+      , RT_readed_data(std::make_shared<std::vector<std::string>>(data))
   {
   }
   // recv data
@@ -162,12 +180,13 @@ public:
     ss.basic_ios::rdbuf(std::cin.rdbuf());
     input_parser.readInput(ss);
     printer1.initialize();
+    std::cout << "PROCEED\n";
     input_done.acquire();
   }
 
   ~DataProcessor()
   {
-    std::cout << "destroy\n";
+    std::cout << "destroy DP\n";
     // input_thread.join();
     // for (auto& str : readed_data) {
     // std::cout << "your string is " << str << "\n";

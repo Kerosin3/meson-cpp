@@ -33,7 +33,9 @@ InputProcessorParser::readInput(std::istringstream& ss)
         auto writex = [&]()
         {
           for (auto& elem : m_Commands) {
-            ofs << elem.getCmd() << " " << elem.getTimestamp() << "\n";
+            data_to_write->push_back(elem.getCmd());
+            data_to_write->push_back(elem.getTimestamp());
+            // ofs << elem.getCmd() << " " << elem.getTimestamp() << "\n";
             ofs.flush();
           }
         };
@@ -50,11 +52,11 @@ InputProcessorParser::readInput(std::istringstream& ss)
           if (isOpBrace(TmpString.at(0))) {
             if (m_NOpenBracets == 0 && !m_Commands.empty()) {
               // executeCallbacks();
-              readed_sem.get().release();
               std::cout << "CALLBACK1\n";
               // printx();
-              // writex();
+              writex();
               m_Commands.clear();
+              readed_sem.get().release();
             }
             m_NOpenBracets++;
           } else if (isClBrace(TmpString.at(0))) {
@@ -63,10 +65,10 @@ InputProcessorParser::readInput(std::istringstream& ss)
               if (m_NCloseBracets == m_NOpenBracets && !m_Commands.empty()) {
                 //   executeCallbacks();
                 std::cout << "CALLBACK2\n";
-                readed_sem.get().release();
                 // printx();
-                // writex();
+                writex();
                 m_Commands.clear();
+                readed_sem.get().release();
               }
               m_NCloseBracets = 0;
               m_NOpenBracets = 0;
@@ -76,24 +78,27 @@ InputProcessorParser::readInput(std::istringstream& ss)
             if (m_Commands.size() == m_BlockSize && m_NOpenBracets == 0) {
               // executeCallbacks();
               std::cout << "CALLBACK3\n";
+              writex();
+              m_Commands.clear();
               readed_sem.get().release();
-              // writex();
               // printx();
             }
           }
 
-          data_to_write.get().push_back(TmpString);
+          // data_to_write->push_back(TmpString);
+          // std::cout << "pushed\n";
           // readed_sem.get().release();
           proc_sem.get().release();
         }
         if (!m_Commands.empty() & !m_NOpenBracets) {
           // x executeCallbacks();
-          // x std::cout << "CALLBACK4\n";
-          // x writex();
+          std::cout << "CALLBACK4\n";
+          writex();
+          readed_sem.get().release();
           // x printx();
         }
-
         done_sem.get().release();
+        std::cout << "done\n";
       });
   thr.detach();
 }
