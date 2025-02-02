@@ -104,13 +104,13 @@ struct FilePrinter : iPrinter
                         return data.readed || data.processing_done ||
                                data.processed || data.disconnet;
                     });
-                    if (data.processing_done)
-                        break;
+
                     // s_lock.lock();
                     auto [elem, timestampx] = data.dqueue.front();
                     timestampx += "_" + printer_name;
                     auto fname = data.blockname;
                     std::cout << "written block " << elem << "\n";
+
                     std::ofstream myfile(fname, std::ios::out | std::ios::app);
                     auto data_to_write = std::format(
                         "writer >>{}<<, CMD: [{}], timestamp: {} fname: {}",
@@ -118,6 +118,8 @@ struct FilePrinter : iPrinter
                     myfile << data_to_write << std::endl;
                     // other thread may use hon
                     data.dqueue.pop();
+                    if (data.processing_done)
+                        break;
                     // s_lock.unlock();
                     data.processed--;
                     data.readed = false;

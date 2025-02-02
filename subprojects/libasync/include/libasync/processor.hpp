@@ -260,7 +260,7 @@ class ProcessorHub
     {
         m_processos.input_processed = false;
         m_processos.input_aquired = true;
-        data.processing_done = true;
+        data.disconnet = true;
         filePrinter1.cvx.notify_all();
         filePrinter2.cvx.notify_all();
         m_processos.cv_data.notify_all();
