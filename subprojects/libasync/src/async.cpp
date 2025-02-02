@@ -1,16 +1,14 @@
-#include <strstream>
-
 #include "async.hpp"
 
 namespace async
 {
 
 // store Processors
-std::map<handle_t, std::shared_ptr<Processor::DataProcessor>> g_ProcessorMapper;
+std::map<handle_t, std::shared_ptr<Proc::ProcessorHub>> g_ProcessorMapper;
 handle_t
 connect(std::size_t bulk_size)
 {
-  auto proc_ptr = std::make_shared<Processor::DataProcessor>(bulk_size);
+  auto proc_ptr = std::make_shared<Proc::ProcessorHub>(bulk_size);
   g_ProcessorMapper[proc_ptr.get()] =  proc_ptr;
   return proc_ptr.get();
 }
@@ -18,13 +16,13 @@ connect(std::size_t bulk_size)
 void
 receive(handle_t handle, const char* data, std::size_t size)
 {
-  std::string in = data;
+  std::string in_str = data;
   auto ptr = g_ProcessorMapper.find(handle);
   if (ptr != g_ProcessorMapper.end()) {
-    ptr->second->receive_input(in);
+    ptr->second->receive_input(in_str);
   }
 }
-
+/*
 void
 receiveCin(handle_t handle)
 {
@@ -33,16 +31,16 @@ receiveCin(handle_t handle)
     ptr->second->revc_cin();
   }
 }
-/*
+*/
 void
 disconnect(handle_t handle)
 {
-  auto ptr = ProcessorsMap.find(handle);
-  if (ptr != ProcessorsMap.end()) {
-    ProcessorsMap.erase(ptr);
+  auto ptr = g_ProcessorMapper.find(handle);
+  if (ptr != g_ProcessorMapper.end()) {
+    // g_ProcessorMapper.erase(ptr);
+    ptr->second->finish();
   }
 }
-*/
 void
 func1()
 {

@@ -2,196 +2,263 @@
 #include <atomic>
 #include <condition_variable>
 #include <cstddef>
-#include <format>
-#include <fstream>
-#include <functional>
 #include <iostream>
 #include <istream>
 #include <memory>
+#include <mutex>
 #include <semaphore>
 #include <sstream>
-#include <streambuf>
 #include <string>
 #include <thread>
-#include <utility>
-#include <vector>
 
-namespace Processor
+#include "printers.hpp"
+
+namespace Proc
 {
-using rsema_t = std::reference_wrapper<std::binary_semaphore>;
-using dsema_t = std::reference_wrapper<std::binary_semaphore>;
-using psema_t = std::reference_wrapper<std::counting_semaphore<1>>;
 
-class DataProcessor;
-
-class Commands
+struct CmdProcessor
 {
-public:
-  Commands() = delete;
-  ~Commands() = default;
-  explicit Commands(std::string cmd)
-      : m_Cmd {std::move(cmd)}
-      , m_Timestamp {std::chrono::system_clock::to_time_t(
-            std::chrono::system_clock::now())}
+  std::mutex cmd_data_mtx;
+  std::condition_variable cv_data;
+  bool input_aquired {false};
+  bool input_processed {false};
+  CmdQueqe& data;
+  std::condition_variable& cvx;
+  std::unique_ptr<std::thread>& thr;
+  std::istringstream& datasource;
+  std::vector<CmdQueqe::data_t> pull;
+  std::thread c_thr;
+  size_t blocksize {};
+  ConsolePrinter consPrinter;
+  size_t m_NOpenBracets {0};
+  size_t m_NCloseBracets {0};
+  std::queue<std::string> buf_print;
+
+  CmdProcessor(CmdQueqe& qdata,
+               std::condition_variable& cv,
+               std::unique_ptr<std::thread>& thx,
+               std::istringstream& dsource,
+               size_t bs)
+      : data(qdata)
+      , cvx(cv)
+      , thr(thx)
+      , datasource(dsource)
+      , blocksize(bs)
+      , consPrinter(c_thr, data, buf_print)
   {
+    consPrinter.run();
+    c_thr.detach();
   }
-  [[nodiscard]] std::string getCmd() const { return std::format("{}", m_Cmd); }
-  [[nodiscard]] std::string getTimestamp()
+
+  void initialize()
   {
-    return std::format(
-        "{}{}_{}",
-        m_Timestamp,
-        serial.fetch_add(1),
-        std::hash<std::thread::id> {}(std::this_thread::get_id()));
+    *thr = std::thread(
+        [&]()
+        {
+          std::string TmpString;
+          auto isOpBrace = [](char symbol) -> bool { return symbol == '{'; };
+          auto isClBrace = [](char symbol) -> bool { return symbol == '}'; };
+          auto exec_write = [&]()
+          {
+            std::lock_guard guard(data.qmtx);
+            data.blockname = pull.front().second;
+            for (const auto& elem : pull) {
+              data.dqueue.push(elem);
+              buf_print.push(elem.first);
+              data.processed++;
+            }
+            consPrinter.print();
+            pull.clear();
+            data.readed = true;
+            cvx.notify_one();
+          };
+          auto clean_n = [&]()
+          {
+            m_NCloseBracets = 0;
+            m_NOpenBracets = 0;
+          };
+          // std::istringstream {input_data};
+          while (!data.disconnet) {
+            std::cout << "start endless\n";
+            std::unique_lock d_lock(cmd_data_mtx);
+            cv_data.wait(d_lock, [this] { return input_aquired && !input_processed; });
+            std::cout << "analyze\n";
+            if (data.disconnet)
+              break;
+            while (std::getline(datasource, TmpString, '\n')) {
+              if (TmpString.empty())
+                continue;
+              std::cout << "data -> " << TmpString << "\n";
+              Commands cmd {TmpString};
+              auto current_cmd = cmd.getWhole();
+              // open bracet
+              if (isOpBrace(TmpString.at(0))) {
+                if (m_NOpenBracets == 0 && !pull.empty()) {
+                  exec_write();
+                }
+                m_NOpenBracets++;
+              } else if (isClBrace(TmpString.at(0))) {
+                if (m_NOpenBracets > 0) {
+                  m_NCloseBracets++;
+                  if (m_NCloseBracets == m_NOpenBracets && !pull.empty()) {
+                    exec_write();
+                  }
+                  clean_n();
+                } else {
+                  if (m_NCloseBracets == m_NOpenBracets && !pull.empty()) {
+                    exec_write();
+                  }
+                  clean_n();
+                }
+              } else {
+                pull.push_back(current_cmd);
+                if ((!(pull.size() % blocksize) && m_NOpenBracets == 0)) {
+                  std::lock_guard guard(data.qmtx);
+                  // get first command timestamp as filename
+                  data.blockname = pull.front().second;
+                  for (const auto& elem : pull) {
+                    buf_print.push(elem.first);
+                    data.dqueue.push(elem);
+                  }
+                  pull.clear();
+                  consPrinter.print();
+                  data.readed = true;
+                  data.processed++;
+                  cvx.notify_one();
+                }
+              }
+
+              std::unique_lock lk(data.qmtx);
+              cvx.wait(lk, [this] { return !data.readed; });
+            }
+            consPrinter.print();
+            std::lock_guard guard(data.qmtx);
+            cvx.notify_all();
+            std::cout << "EOF\n";
+            data.processing_done = true;
+            // data.start.release();
+            // pull.clear();
+            while (!data.dqueue.empty()) {
+              // data.dqueue.pop();
+            }
+            input_processed = true;
+            std::cout << "input PROCESSED\n";
+            // d_lock.release();
+            cv_data.notify_all();
+            // std::unique_lock dxlock (cmd_data_mtx);
+            // cvx.wait(dxlock, [this] { return input_aquired; });
+            std::cout << "cycle endless\n";
+          }
+        });
+    // detach thread
+    thr->detach();
+  }
+
+  ~CmdProcessor() { std::cout << "reader died\n"; }
+};
+
+class ProcessorHub
+{
+  CmdQueqe data;
+  const int PRINTER1_SERIAL = 1;
+  const int PRINTER2_SERIAL = 2;
+  size_t m_blocksize {};
+  std::condition_variable cvx;
+  std::istringstream datasource;
+  std::unique_ptr<std::thread> r_thr;
+  CmdProcessor m_processos;
+  std::unique_ptr<std::thread> p_thr1;
+  FilePrinter filePrinter1;
+  std::unique_ptr<std::thread> p_thr2;
+  FilePrinter filePrinter2;
+  //   std::unique_ptr<std::thread> c_thr;
+  //   ConsolePrinter consolePrinter;
+
+  // protect writes in case..
+  Spinlock writerSlock {};
+
+public:
+  explicit ProcessorHub(size_t blocksize)
+      : m_blocksize(blocksize)
+      , r_thr(std::make_unique<std::thread>(std::thread {}))
+      , m_processos {data, cvx, r_thr, datasource, blocksize}
+      , p_thr1(std::make_unique<std::thread>(std::thread {}))
+      , filePrinter1 {data,
+                      cvx,
+                      p_thr1,
+                      PRINTER1_SERIAL,
+                      blocksize,
+                      writerSlock}
+      , p_thr2(std::make_unique<std::thread>(std::thread {}))
+      , filePrinter2 {
+            data, cvx, p_thr2, PRINTER2_SERIAL, blocksize, writerSlock}
+  {
+    // start reader
+    m_processos.initialize();
+    printersStart();
+  }
+  void readerStart() { m_processos.initialize(); }
+  void printersStart()
+  {
+    filePrinter1.initialize();
+    filePrinter2.initialize();
+  }
+  void finish()
+  {
+    std::cout << "finishing\n";
+    data.disconnet = true;
+    // uniqe lock
+    // wait
+    // data.processing_done = true;
+  }
+  void receive_input(std::string& sdata)
+  {
+    // std::lock_guard lock(m_processos.cmd_data_mtx);
+    // }
+    // std::cout << "input data:\n" << sdata << "\n";
+    std::cout << "AQUIRED DATA\n";
+    // std::lock_guard lock(m_processos.cmd_data_mtx);
+    datasource = std::istringstream {sdata};
+    m_processos.input_aquired = true;
+    m_processos.cv_data.notify_all();
+    std::unique_lock lock(m_processos.cmd_data_mtx);
+    std::cout << "Waiting\n";
+    m_processos.cv_data.wait(lock,
+                             [this] { return m_processos.input_processed; });
+
+    std::cout << "!!!recv done!\n";
+    m_processos.input_processed = false;
+    m_processos.cv_data.notify_all();
+  }
+  ~ProcessorHub()
+  {
+    std::cout << "PCdestroy\n";
+    p_thr1->join();
+    p_thr2->join();
+    //  r_thr->detach();
   }
 
 private:
-  std::string m_Cmd;
-  time_t m_Timestamp;
-  static inline std::atomic<long> serial {0};
-};
-
-class InputProcessorParser
-{
-  using data_t = std::vector<std::string>;
-  std::shared_ptr<data_t> data_to_write;
-  size_t m_NOpenBracets {0};
-  size_t m_NCloseBracets {0};
-  size_t m_BlockSize {};
-  std::vector<Commands> m_Commands;
-  rsema_t readed_sem;
-  psema_t proc_sem;
-  dsema_t done_sem;
-  std::thread thr;
-
-public:
-  InputProcessorParser(std::shared_ptr<data_t> data,
-                       size_t blocksize,
-                       rsema_t rsem,
-                       psema_t psem,
-                       dsema_t dsem)
-      : data_to_write(data)
-      , m_BlockSize(blocksize)
-      , readed_sem(rsem)
-      , proc_sem(psem)
-      , done_sem(dsem)
+  void process()
   {
-  }
-  void readInput(std::istringstream& ss);
+    if (r_thr->joinable()) {
+      r_thr->join();
+    } else {
+      throw std::runtime_error("error joining reader");
+    }
 
-  ~InputProcessorParser() { std::cout << "input done\n"; }
-};
+    if (p_thr1->joinable()) {
+      p_thr1->join();
+    } else {
+      throw std::runtime_error("error joining reader");
+    }
 
-class Printer
-{
-  std::shared_ptr<std::vector<std::string>> cmds;
-  std::thread out_thread;
-  rsema_t readed_sem;
-  psema_t proc_sem;
-  std::ofstream ofs {"fout", std::ios_base::out | std::ios_base::trunc};
-
-  Printer() = delete;
-
-public:
-  Printer(std::shared_ptr<std::vector<std::string>> commands,
-          rsema_t readed_sema,
-          psema_t proc_sema)
-      : cmds(commands)
-      , readed_sem(readed_sema)
-      , proc_sem(proc_sema)
-  {
-  }
-  void initialize()
-  {
-    out_thread = std::thread(
-        [&]()
-        {
-          /*
-          auto writex = [&]()
-          {
-            std::cout << "wrote\n";
-            for (auto& elem : *cmds) {
-              ofs << elem << " ";
-            }
-            ofs << "\n";
-            ofs.flush();
-          };
-          */
-          while (cmds) {
-            readed_sem.get().acquire();
-            // if (cmds.size() == 3) {
-            std::cout << "||block:";
-            for (auto& elem : *cmds) {
-              std::cout << elem << " ";
-              ofs << elem << " ";
-              // }
-            }
-            // ofs.flush();
-            // writex();
-            std::cout << "\n";
-            cmds->clear();
-            proc_sem.get().release();
-          };
-        });
-    out_thread.detach();
-  }
-  ~Printer()
-  {
-    ofs.flush();
-    std::cout << "Destroy Pri\n";
+    if (p_thr2->joinable()) {
+      p_thr2->join();
+    } else {
+      throw std::runtime_error("error joining reader");
+    }
   }
 };
 
-class DataProcessor
-{
-  size_t m_bulk_size {};
-  std::counting_semaphore<1> processed {1};
-  std::binary_semaphore input_readed {false};
-  std::binary_semaphore input_done {false};
-  std::vector<std::string> data;
-  std::shared_ptr<std::vector<std::string>> RT_readed_data;
-  InputProcessorParser input_parser {RT_readed_data,
-                                     m_bulk_size,
-                                     std::ref(input_readed),
-                                     std::ref(processed),
-                                     std::ref(input_done)};
-  Printer printer1 {RT_readed_data, input_readed, processed};
-  std::thread input_thread;
-
-public:
-  DataProcessor() = delete;
-  explicit DataProcessor(size_t size)
-      : m_bulk_size(size)
-      , RT_readed_data(std::make_shared<std::vector<std::string>>(data))
-  {
-  }
-  // recv data
-  void receive_input(std::string& string)
-  {
-    std::istringstream ss(string);
-    input_parser.readInput(ss);
-    printer1.initialize();
-    std::cout << "PROCEED\n";
-    input_done.acquire();
-  }
-  void revc_cin()
-  {
-    std::istringstream ss;
-    ss.basic_ios::rdbuf(std::cin.rdbuf());
-    input_parser.readInput(ss);
-    printer1.initialize();
-    std::cout << "PROCEED\n";
-    input_done.acquire();
-  }
-
-  ~DataProcessor()
-  {
-    std::cout << "destroy DP\n";
-    // input_thread.join();
-    // for (auto& str : readed_data) {
-    // std::cout << "your string is " << str << "\n";
-    // }
-  }
-};
-
-}  // namespace Processor
+}  // namespace Proc
