@@ -78,7 +78,10 @@ struct CmdProcessor
                 });
                 std::cout << "analyze\n";
                 if (data.disconnet)
+                {
+                    std::cout << "BREAK!\n";
                     break;
+                }
                 // if (!datasource.good())
                 // break;
                 while (std::getline(datasource, TmpString, '\n'))
@@ -116,6 +119,7 @@ struct CmdProcessor
                             {
                                 exec_write();
                             }
+                            std::cout << "----\n";
                             clean_n();
                         }
                     }
@@ -143,24 +147,25 @@ struct CmdProcessor
                     std::unique_lock lk(data.qmtx);
                     cvx.wait(lk, [this] { return !data.readed; });
                 }
-                exec_write();
-                // consPrinter.print();
-                // std::lock_guard guard(data.qmtx);
-                // cvx.notify_all();
-                // std::cout << "EOF\n";
-                // data.processing_done = true;
-                //------------
-                // pull.clear();
-                while (!data.dqueue.empty())
+                // exec_write();
+
+                std::lock_guard guard(data.qmtx);
+                data.blockname = pull.front().second;
+                for (const auto& elem : pull)
                 {
-                    // data.dqueue.pop();
+                    data.dqueue.push(elem);
+                    buf_print.push(elem.first);
+                    data.processed++;
                 }
+                consPrinter.print();
+                data.readed = true;
+                cvx.notify_one();
+                clean_n();
+                pull.clear();
                 input_processed = true;
+                input_aquired = false;
                 std::cout << "input PROCESSED\n";
-                // d_lock.release();
                 cv_data.notify_all();
-                // std::unique_lock dxlock (cmd_data_mtx);
-                // cvx.wait(dxlock, [this] { return input_aquired; });
                 std::cout << "cycle endless\n";
             }
             consPrinter.print();
@@ -169,7 +174,7 @@ struct CmdProcessor
             std::cout << "io cycle out\n";
         });
         // detach thread
-        thr->detach();
+        // thr->detach();
     }
 
     ~CmdProcessor()
@@ -197,6 +202,7 @@ class ProcessorHub
 
     // protect writes in case..
     Spinlock writerSlock{};
+    Spinlock sSlock{};
 
   public:
     explicit ProcessorHub(size_t blocksize) :
@@ -254,11 +260,14 @@ class ProcessorHub
     {
         m_processos.input_processed = false;
         m_processos.input_aquired = true;
+        data.processing_done = true;
+        filePrinter1.cvx.notify_all();
+        filePrinter2.cvx.notify_all();
         m_processos.cv_data.notify_all();
         std::cout << "Hub dies!\n";
-        // p_thr1->detach();
-        // p_thr2->detach();
-        // r_thr->detach();
+        p_thr1->join();
+        p_thr2->join();
+        r_thr->join();
     }
 
   private:
