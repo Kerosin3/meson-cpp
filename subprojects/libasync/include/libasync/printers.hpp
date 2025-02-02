@@ -44,6 +44,7 @@ public:
         }
         std::cout << std::endl;
       }
+      std::cout << "console cycle out\n";
     });
   }
   ~ConsolePrinter() { std::cout << "CP DIES" << "\n"; }
@@ -106,6 +107,11 @@ struct FilePrinter : iPrinter {
           cvx.notify_all();
         }
       }
+      std::cout << "file writer cycle out\n";
     });
+    thr->detach();
+  }
+  ~FilePrinter() override {
+      std::cout << "writed dies\n";
   }
 };
