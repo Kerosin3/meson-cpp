@@ -20,12 +20,12 @@
 class ConsolePrinter
 {
     std::thread& thr;
-    CmdQueqe& data;
+    std::shared_ptr<CmdQueqe> data;
     std::binary_semaphore may_print{false};
     std::queue<std::string>& str_data;
 
   public:
-    explicit ConsolePrinter(std::thread& thx, CmdQueqe& cdata,
+    explicit ConsolePrinter(std::thread& thx, std::shared_ptr<CmdQueqe> cdata,
                             std::queue<std::string>& dat) :
         thr(thx), data(cdata), str_data(dat)
     {}
@@ -43,7 +43,9 @@ class ConsolePrinter
             while (true)
             {
                 may_print.acquire();
-                if (data.disconnet)
+                if (!data)
+                    break;
+                if (data->disconnet)
                     break;
                 if (!str_data.empty())
                     std::cout << "block:\n";
@@ -65,14 +67,14 @@ class ConsolePrinter
 
 struct iPrinter
 {
-    CmdQueqe& data;
+    std::shared_ptr<CmdQueqe> data;
     std::condition_variable& cvx;
     std::unique_ptr<std::thread>& thr;
     int m_serial;
     size_t blocksize;
     Spinlock& s_lock;
 
-    iPrinter(CmdQueqe& qdata, std::condition_variable& cv,
+    iPrinter(std::shared_ptr<CmdQueqe> qdata, std::condition_variable& cv,
              std::unique_ptr<std::thread>& thx, int serial, size_t bs,
              Spinlock& sl) :
         data(qdata), cvx(cv), thr(thx), m_serial(serial), blocksize(bs),
@@ -88,7 +90,7 @@ struct iPrinter
 
 struct FilePrinter : iPrinter
 {
-    FilePrinter(CmdQueqe& qdata, std::condition_variable& cv,
+    FilePrinter(std::shared_ptr<CmdQueqe> qdata, std::condition_variable& cv,
                 std::unique_ptr<std::thread>& thx, int serial, size_t bs,
                 Spinlock& sl) : iPrinter(qdata, cv, thx, serial, bs, sl)
     {}
@@ -96,19 +98,20 @@ struct FilePrinter : iPrinter
     virtual void initialize() override
     {
         *thr = std::thread([&]() {
-            while (!data.disconnet)
+            while (!data->disconnet)
             {
                 {
-                    std::unique_lock a_lock(data.qmtx);
+                    std::unique_lock a_lock(data->qmtx);
                     cvx.wait(a_lock, [this] {
-                        return data.readed || data.processing_done ||
-                               data.processed || data.disconnet;
+                        return data->readed || data->processing_done ||
+                               data->processed || data->disconnet;
                     });
-
                     // s_lock.lock();
-                    auto [elem, timestampx] = data.dqueue.front();
+                    if (data->dqueue.empty())
+                        break;
+                    auto& [elem, timestampx] = data->dqueue.front();
                     timestampx += "_" + printer_name;
-                    auto fname = data.blockname;
+                    auto& fname = data->blockname;
                     std::cout << "written block " << elem << "\n";
 
                     std::ofstream myfile(fname, std::ios::out | std::ios::app);
@@ -117,22 +120,23 @@ struct FilePrinter : iPrinter
                         m_serial, elem, timestampx, fname);
                     myfile << data_to_write << std::endl;
                     // other thread may use hon
-                    data.dqueue.pop();
-                    if (data.processing_done)
+                    data->dqueue.pop();
+                    if (data->processing_done)
                         break;
                     // s_lock.unlock();
-                    data.processed--;
-                    data.readed = false;
+                    data->processed--;
+                    data->readed = false;
                     a_lock.unlock();
                     cvx.notify_all();
                 }
             }
             std::cout << "file writer cycle out\n";
         });
-        // thr->detach();
     }
     ~FilePrinter() override
     {
+        if (thr->joinable())
+            thr->join();
         std::cout << "writed dies\n";
     }
 };

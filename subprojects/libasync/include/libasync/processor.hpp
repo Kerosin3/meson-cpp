@@ -22,7 +22,7 @@ struct CmdProcessor
     std::condition_variable cv_data;
     bool input_aquired{false};
     bool input_processed{false};
-    CmdQueqe& data;
+    std::shared_ptr<CmdQueqe> data;
     std::condition_variable& cvx;
     std::unique_ptr<std::thread>& thr;
     std::istringstream& datasource;
@@ -34,14 +34,13 @@ struct CmdProcessor
     size_t m_NCloseBracets{0};
     std::queue<std::string> buf_print;
 
-    CmdProcessor(CmdQueqe& qdata, std::condition_variable& cv,
+    CmdProcessor(std::shared_ptr<CmdQueqe> qdata, std::condition_variable& cv,
                  std::unique_ptr<std::thread>& thx, std::istringstream& dsource,
                  size_t bs) :
         data(qdata), cvx(cv), thr(thx), datasource(dsource), blocksize(bs),
         consPrinter(c_thr, data, buf_print)
     {
         consPrinter.run();
-        c_thr.detach();
     }
 
     void initialize()
@@ -51,17 +50,17 @@ struct CmdProcessor
             auto isOpBrace = [](char symbol) -> bool { return symbol == '{'; };
             auto isClBrace = [](char symbol) -> bool { return symbol == '}'; };
             auto exec_write = [&]() {
-                std::lock_guard guard(data.qmtx);
-                data.blockname = pull.front().second;
+                std::lock_guard guard(data->qmtx);
+                data->blockname = pull.front().second;
                 for (const auto& elem : pull)
                 {
-                    data.dqueue.push(elem);
+                    data->dqueue.push(elem);
                     buf_print.push(elem.first);
-                    data.processed++;
+                    data->processed++;
                 }
                 consPrinter.print();
                 pull.clear();
-                data.readed = true;
+                data->readed = true;
                 cvx.notify_one();
             };
             auto clean_n = [&]() {
@@ -69,7 +68,7 @@ struct CmdProcessor
                 m_NOpenBracets = 0;
             };
             // std::istringstream {input_data};
-            while (!data.disconnet)
+            while (!data->disconnet)
             {
                 std::cout << "start endless\n";
                 std::unique_lock d_lock(cmd_data_mtx);
@@ -77,7 +76,7 @@ struct CmdProcessor
                     return input_aquired && !input_processed;
                 });
                 std::cout << "analyze\n";
-                if (data.disconnet)
+                if (data->disconnet)
                 {
                     std::cout << "BREAK!\n";
                     break;
@@ -128,37 +127,37 @@ struct CmdProcessor
                         pull.push_back(current_cmd);
                         if ((!(pull.size() % blocksize) && m_NOpenBracets == 0))
                         {
-                            std::lock_guard guard(data.qmtx);
+                            std::lock_guard guard(data->qmtx);
                             // get first command timestamp as filename
-                            data.blockname = pull.front().second;
+                            data->blockname = pull.front().second;
                             for (const auto& elem : pull)
                             {
                                 buf_print.push(elem.first);
-                                data.dqueue.push(elem);
+                                data->dqueue.push(elem);
                             }
                             pull.clear();
                             consPrinter.print();
-                            data.readed = true;
-                            data.processed++;
+                            data->readed = true;
+                            data->processed++;
                             cvx.notify_one();
                         }
                     }
 
-                    std::unique_lock lk(data.qmtx);
-                    cvx.wait(lk, [this] { return !data.readed; });
+                    std::unique_lock lk(data->qmtx);
+                    cvx.wait(lk, [this] { return !data->readed; });
                 }
                 // exec_write();
 
-                std::lock_guard guard(data.qmtx);
-                data.blockname = pull.front().second;
+                std::lock_guard guard(data->qmtx);
+                data->blockname = pull.front().second;
                 for (const auto& elem : pull)
                 {
-                    data.dqueue.push(elem);
+                    data->dqueue.push(elem);
                     buf_print.push(elem.first);
-                    data.processed++;
+                    data->processed++;
                 }
                 consPrinter.print();
-                data.readed = true;
+                data->readed = true;
                 cvx.notify_one();
                 clean_n();
                 pull.clear();
@@ -168,10 +167,12 @@ struct CmdProcessor
                 cv_data.notify_all();
                 std::cout << "cycle endless\n";
             }
+            std::cout << "-------------here" << std::endl;
             consPrinter.print();
-            data.processing_done = true;
+            data->processing_done = true;
             cvx.notify_all();
             std::cout << "io cycle out\n";
+            c_thr.join();
         });
         // detach thread
         // thr->detach();
@@ -185,7 +186,7 @@ struct CmdProcessor
 
 class ProcessorHub
 {
-    CmdQueqe data;
+    std::shared_ptr<CmdQueqe> data;
     const int PRINTER1_SERIAL = 1;
     const int PRINTER2_SERIAL = 2;
     size_t m_blocksize{};
@@ -203,10 +204,11 @@ class ProcessorHub
     // protect writes in case..
     Spinlock writerSlock{};
     Spinlock sSlock{};
+    bool initialized{false};
 
   public:
     explicit ProcessorHub(size_t blocksize) :
-        m_blocksize(blocksize),
+        data{std::make_shared<CmdQueqe>(CmdQueqe{})}, m_blocksize(blocksize),
         r_thr(std::make_unique<std::thread>(std::thread{})),
         m_processos{data, cvx, r_thr, datasource, blocksize},
         p_thr1(std::make_unique<std::thread>(std::thread{})),
@@ -216,8 +218,6 @@ class ProcessorHub
         filePrinter2{data, cvx, p_thr2, PRINTER2_SERIAL, blocksize, writerSlock}
     {
         // start reader
-        m_processos.initialize();
-        printersStart();
     }
     void readerStart()
     {
@@ -231,13 +231,19 @@ class ProcessorHub
     void finish()
     {
         std::cout << "finishing\n";
-        data.disconnet = true;
+        data->disconnet = true;
         // uniqe lock
         // wait
         // data.processing_done = true;
     }
     void receive_input(std::string& sdata)
     {
+        if (!initialized)
+        {
+            m_processos.initialize();
+            printersStart();
+        }
+        initialized = true;
         // std::lock_guard lock(m_processos.cmd_data_mtx);
         // }
         // std::cout << "input data:\n" << sdata << "\n";
@@ -245,6 +251,7 @@ class ProcessorHub
         // std::lock_guard lock(m_processos.cmd_data_mtx);
         datasource = std::istringstream{sdata};
         m_processos.input_aquired = true;
+
         m_processos.cv_data.notify_all();
         std::unique_lock lock(m_processos.cmd_data_mtx);
         std::cout << "Waiting\n";
@@ -260,14 +267,18 @@ class ProcessorHub
     {
         m_processos.input_processed = false;
         m_processos.input_aquired = true;
-        data.disconnet = true;
+        data->disconnet = true;
         filePrinter1.cvx.notify_all();
         filePrinter2.cvx.notify_all();
         m_processos.cv_data.notify_all();
+
         std::cout << "Hub dies!\n";
-        p_thr1->join();
-        p_thr2->join();
-        r_thr->join();
+        if (p_thr1->joinable())
+            p_thr1->join();
+        if (p_thr2->joinable())
+            p_thr2->join();
+        if (r_thr->joinable())
+            r_thr->join();
     }
 
   private:
