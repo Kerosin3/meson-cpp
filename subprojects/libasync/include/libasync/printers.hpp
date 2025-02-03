@@ -43,12 +43,11 @@ class ConsolePrinter
             while (true)
             {
                 may_print.acquire();
-                if (!data)
+                if (!data || data->disconnet || str_data.empty())
+                {
                     break;
-                if (data->disconnet)
-                    break;
-                if (!str_data.empty())
-                    std::cout << "block:\n";
+                }
+                std::cout << "block:\n";
                 while (!str_data.empty())
                 {
                     std::cout << str_data.front() << " ";

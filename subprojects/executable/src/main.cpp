@@ -27,7 +27,7 @@ int main(int argc, char* argv[])
 
     std::string datax =
         "cmd1x\ncmd2x\n"
-        "{\ncmd3x\ncmd4x\n}\n" // block1
+        "{\ncmd3x\ncmd4x\ncmd5x\ncmd6x\n}\n" // block1
         "{\ncmd5x\ncmd6x\n{\ncmd7x\ncmd8x\n}\ncmd9x\n}"
         "\n{\ncmd10x\ncmd11x"
         "\n";
@@ -40,10 +40,10 @@ int main(int argc, char* argv[])
     std::string data3 = "cmd21\ncmd22\n";
     constexpr size_t BLOCKSIZE = 3;
     auto* handler = async::connect(3);
-    auto* handler2 = async::connect(4);
+    auto* handler2 = async::connect(3);
     async::receive(handler, data.c_str(), data.size());
-    async::receive(handler, data2.c_str(), data2.size());
     async::receive(handler2, datax.c_str(), datax.size());
+    async::receive(handler, data2.c_str(), data2.size());
     async::disconnect(handler);
     async::disconnect(handler2);
     return EXIT_SUCCESS;

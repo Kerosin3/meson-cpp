@@ -193,15 +193,11 @@ class ProcessorHub
     std::condition_variable cvx;
     std::istringstream datasource;
     std::unique_ptr<std::thread> r_thr;
-    CmdProcessor m_processos;
+    CmdProcessor m_cmdProcessor;
     std::unique_ptr<std::thread> p_thr1;
     FilePrinter filePrinter1;
     std::unique_ptr<std::thread> p_thr2;
     FilePrinter filePrinter2;
-    //   std::unique_ptr<std::thread> c_thr;
-    //   ConsolePrinter consolePrinter;
-
-    // protect writes in case..
     Spinlock writerSlock{};
     Spinlock sSlock{};
     bool initialized{false};
@@ -210,7 +206,7 @@ class ProcessorHub
     explicit ProcessorHub(size_t blocksize) :
         data{std::make_shared<CmdQueqe>(CmdQueqe{})}, m_blocksize(blocksize),
         r_thr(std::make_unique<std::thread>(std::thread{})),
-        m_processos{data, cvx, r_thr, datasource, blocksize},
+        m_cmdProcessor{data, cvx, r_thr, datasource, blocksize},
         p_thr1(std::make_unique<std::thread>(std::thread{})),
         filePrinter1{data,      cvx,        p_thr1, PRINTER1_SERIAL,
                      blocksize, writerSlock},
@@ -221,7 +217,7 @@ class ProcessorHub
     }
     void readerStart()
     {
-        m_processos.initialize();
+        m_cmdProcessor.initialize();
     }
     void printersStart()
     {
@@ -230,47 +226,34 @@ class ProcessorHub
     }
     void finish()
     {
-        std::cout << "finishing\n";
         data->disconnet = true;
-        // uniqe lock
-        // wait
-        // data.processing_done = true;
     }
     void receive_input(std::string& sdata)
     {
         if (!initialized)
         {
-            m_processos.initialize();
+            readerStart();
             printersStart();
         }
         initialized = true;
-        // std::lock_guard lock(m_processos.cmd_data_mtx);
-        // }
-        // std::cout << "input data:\n" << sdata << "\n";
-        std::cout << "AQUIRED DATA\n";
-        // std::lock_guard lock(m_processos.cmd_data_mtx);
         datasource = std::istringstream{sdata};
-        m_processos.input_aquired = true;
-
-        m_processos.cv_data.notify_all();
-        std::unique_lock lock(m_processos.cmd_data_mtx);
-        std::cout << "Waiting\n";
-        m_processos.cv_data.wait(lock, [this] {
-            return m_processos.input_processed;
+        m_cmdProcessor.input_aquired = true;
+        m_cmdProcessor.cv_data.notify_all();
+        std::unique_lock lock(m_cmdProcessor.cmd_data_mtx);
+        m_cmdProcessor.cv_data.wait(lock, [this] {
+            return m_cmdProcessor.input_processed;
         });
-
-        std::cout << "!!!recv done!\n";
-        m_processos.input_processed = false;
-        m_processos.cv_data.notify_all();
+        m_cmdProcessor.input_processed = false;
+        m_cmdProcessor.cv_data.notify_all();
     }
     ~ProcessorHub()
     {
-        m_processos.input_processed = false;
-        m_processos.input_aquired = true;
+        m_cmdProcessor.input_processed = false;
+        m_cmdProcessor.input_aquired = true;
         data->disconnet = true;
         filePrinter1.cvx.notify_all();
         filePrinter2.cvx.notify_all();
-        m_processos.cv_data.notify_all();
+        m_cmdProcessor.cv_data.notify_all();
 
         std::cout << "Hub dies!\n";
         if (p_thr1->joinable())
