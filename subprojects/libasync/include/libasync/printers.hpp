@@ -57,6 +57,7 @@ class ConsolePrinter
             }
             std::cout << "console cycle out\n";
         });
+        thr.detach();
     }
     ~ConsolePrinter()
     {
@@ -107,10 +108,11 @@ struct FilePrinter : iPrinter
                     });
                     // s_lock.lock();
                     if (data->dqueue.empty())
-                        break;
+                        continue;;
                     auto& [elem, timestampx] = data->dqueue.front();
                     timestampx += "_" + printer_name;
                     auto& fname = data->blockname;
+                    std::cout << "xblocknam: "  << fname << "\n";
                     std::cout << "written block " << elem << "\n";
 
                     std::ofstream myfile(fname, std::ios::out | std::ios::app);
@@ -120,8 +122,8 @@ struct FilePrinter : iPrinter
                     myfile << data_to_write << std::endl;
                     // other thread may use hon
                     data->dqueue.pop();
-                    if (data->processing_done)
-                        break;
+                    // if (data->processing_done)
+                        // break;
                     // s_lock.unlock();
                     data->processed--;
                     data->readed = false;

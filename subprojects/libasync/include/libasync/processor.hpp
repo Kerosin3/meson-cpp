@@ -51,6 +51,7 @@ struct CmdProcessor
             auto isClBrace = [](char symbol) -> bool { return symbol == '}'; };
             auto exec_write = [&]() {
                 std::lock_guard guard(data->qmtx);
+                std::cout << "ASSIGN BLOCKNAME1\n";
                 data->blockname = pull.front().second;
                 for (const auto& elem : pull)
                 {
@@ -125,10 +126,12 @@ struct CmdProcessor
                     else
                     {
                         pull.push_back(current_cmd);
+                        std::cout << "pushingx\n";
                         if ((!(pull.size() % blocksize) && m_NOpenBracets == 0))
                         {
                             std::lock_guard guard(data->qmtx);
                             // get first command timestamp as filename
+                            std::cout << "ASSIGN BLOCKNAME2\n";
                             data->blockname = pull.front().second;
                             for (const auto& elem : pull)
                             {
@@ -138,7 +141,7 @@ struct CmdProcessor
                             pull.clear();
                             consPrinter.print();
                             data->readed = true;
-                            data->processed++;
+                            // data->processed++;
                             cvx.notify_one();
                         }
                     }
@@ -147,20 +150,27 @@ struct CmdProcessor
                     cvx.wait(lk, [this] { return !data->readed; });
                 }
                 // exec_write();
-
-                std::lock_guard guard(data->qmtx);
-                data->blockname = pull.front().second;
-                for (const auto& elem : pull)
+                // std::cout << "waiting\n";
+                // data->readed = true;
+                // std::unique_lock lg(data->qmtx);
+                // cvx.wait(lg, [this] { return !data->readed; });
+                std::cout << "ASSIGN BLOCKNAME3\n";
+                if (!pull.empty())
                 {
-                    data->dqueue.push(elem);
-                    buf_print.push(elem.first);
-                    data->processed++;
+                    data->blockname = pull.front().second;
+
+                    for (const auto& elem : pull)
+                    {
+                        data->dqueue.push(elem);
+                        buf_print.push(elem.first);
+                        data->processed++;
+                    }
+                    consPrinter.print();
+                    data->readed = true;
+                    cvx.notify_one();
+                    clean_n();
+                    pull.clear();
                 }
-                consPrinter.print();
-                data->readed = true;
-                cvx.notify_one();
-                clean_n();
-                pull.clear();
                 input_processed = true;
                 input_aquired = false;
                 std::cout << "input PROCESSED\n";
@@ -172,7 +182,7 @@ struct CmdProcessor
             data->processing_done = true;
             cvx.notify_all();
             std::cout << "io cycle out\n";
-            c_thr.join();
+            // c_thr.join();
         });
         // detach thread
         // thr->detach();
@@ -226,6 +236,9 @@ class ProcessorHub
     }
     void finish()
     {
+        // std::cout << "finishing\n";
+        // std::unique_lock a_lock(data->qmtx);
+        // cvx.wait(a_lock, [this] { return data->processing_done; });
         data->disconnet = true;
     }
     void receive_input(std::string& sdata)

@@ -12,10 +12,10 @@ struct CmdQueqe
     std::mutex qmtx;
     std::queue<data_t> dqueue;
     std::string blockname{};
-    std::atomic_bool readed = false;
+    bool readed = false;
     std::atomic_bool disconnet = false;
-    std::atomic_size_t processed = 0;
-    std::atomic_bool processing_done = false;
+    int processed = 0;
+    bool processing_done = false;
     std::counting_semaphore<1> start{0};
     CmdQueqe() = default;
     CmdQueqe(CmdQueqe&& cmd)  noexcept {}
