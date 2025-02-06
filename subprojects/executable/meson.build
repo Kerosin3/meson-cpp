@@ -1,11 +1,11 @@
-project('executable', 'cpp',
+project('mbulk', 'cpp',
   meson_version: '>=0.58.0',
   default_options: [
     'cpp_std=c++20',
     'build.cpp_std=c++20',
     'warning_level=2',
-    'strip=no',
-    'buildtype=debug',
+    'strip=yes',
+    'buildtype=release',
     'force_fallback_for=wlroots,libliftoff,vkroots'
   ],
   version : '1.1.0',

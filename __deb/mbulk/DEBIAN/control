@@ -1,0 +1,9 @@
+Package: mbulk
+Version: 0.1
+Section: custom
+Priority: optional
+Architecture: amd64
+Essential: no
+Installed-Size: 4096
+Maintainer: ubuntumint.com
+Description: multithreaded command processor
