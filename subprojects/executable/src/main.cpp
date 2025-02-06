@@ -31,8 +31,8 @@ int main(int argc, char* argv[])
     std::thread thr = std::thread([&]() {
         // create second connection
         auto* handler2 = async::connect(2);
-        // just wait to make sure print last
-        std::this_thread::sleep_for(std::chrono::milliseconds(50));
+        // to make sure process last
+        // ::this_thread::sleep_for(std::chrono::milliseconds(50));
         // receive on second
         async::receive(handler2, data3.c_str(), data3.size());
         async::disconnect(handler2);
