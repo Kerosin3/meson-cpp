@@ -10,7 +10,7 @@ static constexpr const char *DEFAULT_CHARSET =
 static std::default_random_engine random{static_cast<unsigned>(time(0))};
 static std::mt19937 random_generator(random());
 
-std::string generate(size_t length, const std::string &charset = "") {
+inline std::string generate(size_t length, const std::string &charset = "") {
   std::string str = charset.empty() ? std::string(DEFAULT_CHARSET) : charset;
   while (length > str.length())
     str += str;

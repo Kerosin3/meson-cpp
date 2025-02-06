@@ -4,8 +4,9 @@ project('libasync', 'cpp',
     'cpp_std=c++20',
     'build.cpp_std=c++20',
     'warning_level=2',
-    'strip=no',
+    'strip=yes',
     'buildtype=debug',
+    'default_library=static',
     'force_fallback_for=wlroots,libliftoff,vkroots'
   ],
   version : '1.0.0',
@@ -31,7 +32,7 @@ subdir('src')
 # add include dir
 libasync_inc = include_directories('include/libasync')
 # create shared library
-libasync = shared_library('async',
+libasync = static_library('async',
   sources,
   include_directories : libasync_inc,
   install : true,
