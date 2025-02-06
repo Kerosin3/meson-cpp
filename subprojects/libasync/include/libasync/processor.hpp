@@ -51,7 +51,6 @@ struct CmdProcessor
             auto isClBrace = [](char symbol) -> bool { return symbol == '}'; };
             auto exec_write = [&]() {
                 std::lock_guard guard(data->qmtx);
-                std::cout << "ASSIGN BLOCKNAME1\n";
                 data->blockname = pull.front().second;
                 for (const auto& elem : pull)
                 {
@@ -68,27 +67,20 @@ struct CmdProcessor
                 m_NCloseBracets = 0;
                 m_NOpenBracets = 0;
             };
-            // std::istringstream {input_data};
             while (!data->disconnet)
             {
-                std::cout << "start endless\n";
                 std::unique_lock d_lock(cmd_data_mtx);
                 cv_data.wait(d_lock, [this] {
                     return input_aquired && !input_processed;
                 });
-                std::cout << "analyze\n";
                 if (data->disconnet)
                 {
-                    std::cout << "BREAK!\n";
                     break;
                 }
-                // if (!datasource.good())
-                // break;
                 while (std::getline(datasource, TmpString, '\n'))
                 {
                     if (TmpString.empty())
                         continue;
-                    std::cout << "data -> " << TmpString << "\n";
                     Commands cmd{TmpString};
                     auto current_cmd = cmd.getWhole();
                     // open bracet
@@ -119,19 +111,15 @@ struct CmdProcessor
                             {
                                 exec_write();
                             }
-                            std::cout << "----\n";
                             clean_n();
                         }
                     }
                     else
                     {
                         pull.push_back(current_cmd);
-                        std::cout << "pushingx\n";
                         if ((!(pull.size() % blocksize) && m_NOpenBracets == 0))
                         {
                             std::lock_guard guard(data->qmtx);
-                            // get first command timestamp as filename
-                            std::cout << "ASSIGN BLOCKNAME2\n";
                             data->blockname = pull.front().second;
                             for (const auto& elem : pull)
                             {
@@ -141,7 +129,6 @@ struct CmdProcessor
                             pull.clear();
                             consPrinter.print();
                             data->readed = true;
-                            // data->processed++;
                             cvx.notify_one();
                         }
                     }
@@ -149,12 +136,6 @@ struct CmdProcessor
                     std::unique_lock lk(data->qmtx);
                     cvx.wait(lk, [this] { return !data->readed; });
                 }
-                // exec_write();
-                // std::cout << "waiting\n";
-                // data->readed = true;
-                // std::unique_lock lg(data->qmtx);
-                // cvx.wait(lg, [this] { return !data->readed; });
-                std::cout << "ASSIGN BLOCKNAME3\n";
                 if (!pull.empty())
                 {
                     data->blockname = pull.front().second;
@@ -173,25 +154,15 @@ struct CmdProcessor
                 }
                 input_processed = true;
                 input_aquired = false;
-                std::cout << "input PROCESSED\n";
                 cv_data.notify_all();
-                std::cout << "cycle endless\n";
             }
-            std::cout << "-------------here" << std::endl;
             consPrinter.print();
             data->processing_done = true;
             cvx.notify_all();
-            std::cout << "io cycle out\n";
-            // c_thr.join();
         });
-        // detach thread
-        // thr->detach();
     }
 
-    ~CmdProcessor()
-    {
-        std::cout << "ioreader died\n";
-    }
+    ~CmdProcessor() =default;
 };
 
 class ProcessorHub
@@ -236,9 +207,6 @@ class ProcessorHub
     }
     void finish()
     {
-        // std::cout << "finishing\n";
-        // std::unique_lock a_lock(data->qmtx);
-        // cvx.wait(a_lock, [this] { return data->processing_done; });
         data->disconnet = true;
     }
     void receive_input(std::string& sdata)
@@ -268,7 +236,6 @@ class ProcessorHub
         filePrinter2.cvx.notify_all();
         m_cmdProcessor.cv_data.notify_all();
 
-        std::cout << "Hub dies!\n";
         if (p_thr1->joinable())
             p_thr1->join();
         if (p_thr2->joinable())
@@ -277,36 +244,6 @@ class ProcessorHub
             r_thr->join();
     }
 
-  private:
-    void process()
-    {
-        if (r_thr->joinable())
-        {
-            r_thr->join();
-        }
-        else
-        {
-            throw std::runtime_error("error joining reader");
-        }
-
-        if (p_thr1->joinable())
-        {
-            p_thr1->join();
-        }
-        else
-        {
-            throw std::runtime_error("error joining reader");
-        }
-
-        if (p_thr2->joinable())
-        {
-            p_thr2->join();
-        }
-        else
-        {
-            throw std::runtime_error("error joining reader");
-        }
-    }
 };
 
 } // namespace Proc

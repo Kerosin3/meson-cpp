@@ -7,41 +7,38 @@
 
 int main(int argc, char* argv[])
 {
-    // async::func1();
-    // async::func2();
-    // auto handler = async::connect(3);
-    // auto handler2 = async::connect(3);
-    // std::string data =
-    // "cmd1\ncmd2\n{\ncmd3\ncmd4\n}\n{\ncmd5\ncmd6\n{\ncmd7\ncmd8\n}\ncmd9\n}"
-    // "\n{\ncmd10\ncmd11\n";
-    // async::receive(handler, data.c_str(), data.size());
-    // async::receiveCin(handler);
-
-    //-----------------
-    std::string data =
+    // same blocks
+    std::string data1 =
         "cmd1\ncmd2\n"
         "{\ncmd3\ncmd4\n}\n" // block1
         "{\ncmd5\ncmd6\n{\ncmd7\ncmd8\n}\ncmd9\n}"
         "\n{\ncmd10\ncmd11"
         "\n";
 
-    std::string datax =
+    // same blocks
+    std::string data2 =
         "cmd1x\ncmd2x\n"
         "{\ncmd3x\ncmd4x\n}\n" // block1
-        "{\ncmd5\ncmd6\n{\ncmd7\ncmd8\n}\ncmd9\n}"
+        "{\ncmd5x\ncmd6x\n{\ncmd7x\ncmd8x\n}\ncmd9x\n}"
         "\n{\ncmd10x\ncmd11x"
         "\n";
-    std::string data2 = "cmd31\ncmd32\ncmd33\ncmd34\ncmd35\n";
-    // std::string data3 = "cmd21\ncmd22\ncmd23\ncmd24\n";
+    // 2x3 block commands
+    std::string data3 = "cmd31\ncmd32\ncmd33\ncmd34\ncmd35\ncmd36\ncmd37\n";
+    // create first connection
     auto* handler = async::connect(3);
     std::thread thr = std::thread([&]() {
+        // create second connection
         auto* handler2 = async::connect(2);
-        std::this_thread::sleep_for(std::chrono::milliseconds(500));
-        async::receive(handler2, data2.c_str(), data2.size());
+        // std::this_thread::sleep_for(std::chrono::milliseconds(100));
+        // receive on second
+        async::receive(handler2, data3.c_str(), data3.size());
         async::disconnect(handler2);
     });
-    async::receive(handler, data.c_str(), data.size());
-    async::receive(handler, datax.c_str(), datax.size());
+    // receive call on first
+    async::receive(handler, data1.c_str(), data1.size());
+    // receive call on first
+    async::receive(handler, data2.c_str(), data2.size());
+    // join second thread
     thr.join();
     async::disconnect(handler);
     return EXIT_SUCCESS;

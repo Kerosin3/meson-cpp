@@ -55,14 +55,10 @@ class ConsolePrinter
                 }
                 std::cout << std::endl;
             }
-            std::cout << "console cycle out\n";
         });
         thr.detach();
     }
-    ~ConsolePrinter()
-    {
-        std::cout << "CP DIES" << "\n";
-    }
+    ~ConsolePrinter() =default;
 };
 
 struct iPrinter
@@ -80,7 +76,6 @@ struct iPrinter
         data(qdata), cvx(cv), thr(thx), m_serial(serial), blocksize(bs),
         s_lock(sl)
     {
-        std::cout << "printer creation\n";
     }
     std::string printer_name{RandomString::generate(5)};
 
@@ -112,9 +107,6 @@ struct FilePrinter : iPrinter
                     auto& [elem, timestampx] = data->dqueue.front();
                     timestampx += "_" + printer_name;
                     auto& fname = data->blockname;
-                    std::cout << "xblocknam: "  << fname << "\n";
-                    std::cout << "written block " << elem << "\n";
-
                     std::ofstream myfile(fname, std::ios::out | std::ios::app);
                     auto data_to_write = std::format(
                         "writer >>{}<<, CMD: [{}], timestamp: {} fname: {}",
@@ -131,13 +123,11 @@ struct FilePrinter : iPrinter
                     cvx.notify_all();
                 }
             }
-            std::cout << "file writer cycle out\n";
         });
     }
     ~FilePrinter() override
     {
         if (thr->joinable())
             thr->join();
-        std::cout << "writed dies\n";
     }
 };
