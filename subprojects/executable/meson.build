@@ -11,6 +11,13 @@ project('executable', 'cpp',
   version : '1.1.0',
   license : 'MIT')
 
+add_project_link_arguments(
+  '-static-libgcc',
+  '-static-libstdc++',
+  '-static',
+  language: 'cpp',
+)
+
 cppc = meson.get_compiler('cpp')
 add_project_arguments(cppc.get_supported_arguments([
   '-Wno-unused-parameter',
@@ -53,7 +60,7 @@ boost_dep = dependency('boost',version: '>=1.83.0',include_type: 'system',
                                     'filesystem',
                                     'program_options',
                                     'log_setup',
-                                    'log', 
+                                    'log',
                                     'date_time',
                                     'system' ])
 message('OUTPUT ARE: ',meson.global_build_root())

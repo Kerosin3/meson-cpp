@@ -31,15 +31,18 @@ int main(int argc, char* argv[])
         "{\ncmd5\ncmd6\n{\ncmd7\ncmd8\n}\ncmd9\n}"
         "\n{\ncmd10x\ncmd11x"
         "\n";
-    std::string data2 =
-        "cmd31\ncmd32\ncmd33\ncmd34\ncmd35\n";
+    std::string data2 = "cmd31\ncmd32\ncmd33\ncmd34\ncmd35\n";
     // std::string data3 = "cmd21\ncmd22\ncmd23\ncmd24\n";
     auto* handler = async::connect(3);
-    auto* handler2 = async::connect(2);
+    std::thread thr = std::thread([&]() {
+        auto* handler2 = async::connect(2);
+        std::this_thread::sleep_for(std::chrono::milliseconds(500));
+        async::receive(handler2, data2.c_str(), data2.size());
+        async::disconnect(handler2);
+    });
     async::receive(handler, data.c_str(), data.size());
     async::receive(handler, datax.c_str(), datax.size());
-    async::receive(handler2, data2.c_str(), data2.size());
+    thr.join();
     async::disconnect(handler);
-    async::disconnect(handler2);
     return EXIT_SUCCESS;
 }
