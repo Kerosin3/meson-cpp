@@ -1,6 +1,6 @@
 # HOMEWORK-9
 
-+ packet commands processing with multithreading!
++ packet commands processing with multithreading
 
 ## REQUIREMENTS
 

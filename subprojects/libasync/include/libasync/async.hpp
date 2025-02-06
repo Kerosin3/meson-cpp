@@ -23,10 +23,4 @@ receiveCin(handle_t handle);
 void
 disconnect(handle_t handle);
 
-void
-func1();
-
-void
-func2();
-
 }  // namespace async

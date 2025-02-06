@@ -7,7 +7,7 @@
 
 int main(int argc, char* argv[])
 {
-    // same blocks
+    // same blocks (block =3)
     std::string data1 =
         "cmd1\ncmd2\n"
         "{\ncmd3\ncmd4\n}\n" // block1
@@ -15,27 +15,28 @@ int main(int argc, char* argv[])
         "\n{\ncmd10\ncmd11"
         "\n";
 
-    // same blocks
+    // same blocks (block =3)
     std::string data2 =
         "cmd1x\ncmd2x\n"
         "{\ncmd3x\ncmd4x\n}\n" // block1
         "{\ncmd5x\ncmd6x\n{\ncmd7x\ncmd8x\n}\ncmd9x\n}"
         "\n{\ncmd10x\ncmd11x"
         "\n";
-    // 2x3 block commands
+    // 2x3 block + 1
     std::string data3 = "cmd31\ncmd32\ncmd33\ncmd34\ncmd35\ncmd36\ncmd37\n";
     // create first connection
     auto* handler = async::connect(3);
+    // receive call on first
+    async::receive(handler, data1.c_str(), data1.size());
     std::thread thr = std::thread([&]() {
         // create second connection
         auto* handler2 = async::connect(2);
-        // std::this_thread::sleep_for(std::chrono::milliseconds(100));
+        // just wait to make sure print last
+        std::this_thread::sleep_for(std::chrono::milliseconds(50));
         // receive on second
         async::receive(handler2, data3.c_str(), data3.size());
         async::disconnect(handler2);
     });
-    // receive call on first
-    async::receive(handler, data1.c_str(), data1.size());
     // receive call on first
     async::receive(handler, data2.c_str(), data2.size());
     // join second thread

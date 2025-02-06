@@ -22,35 +22,13 @@ receive(handle_t handle, const char* data, std::size_t size)
     ptr->second->receive_input(in_str);
   }
 }
-/*
-void
-receiveCin(handle_t handle)
-{
-  auto ptr = g_ProcessorMapper.find(handle);
-  if (ptr != g_ProcessorMapper.end()) {
-    ptr->second->revc_cin();
-  }
-}
-*/
+
 void
 disconnect(handle_t handle)
 {
   auto ptr = g_ProcessorMapper.find(handle);
   if (ptr != g_ProcessorMapper.end()) {
-    // g_ProcessorMapper.erase(ptr);
     ptr->second->finish();
   }
 }
-void
-func1()
-{
-  std::cout << "func 1\n";
-}
-
-void
-func2()
-{
-  std::cout << "func 2\n";
-}
-
 }  // namespace async
